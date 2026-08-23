@@ -56,6 +56,7 @@ export default function MisDosimetros() {
   const [page, setPage] = useState(1)
   const [exportando, setExportando] = useState(false)
   const [error, setError] = useState('')
+  const [grupoAbierto, setGrupoAbierto] = useState(null)
 
   // Carga la lista de clientes para el buscador (según el rol).
   useEffect(() => {
@@ -157,6 +158,20 @@ export default function MisDosimetros() {
     }
   }
 
+  const toggleGrupo = (fecha) => setGrupoAbierto((prev) => (prev === fecha ? null : fecha))
+
+  // Copia solo la columna de números de dosímetro (uno por línea, en el orden
+  // tarea → bandeja → slot) para pegarla directo en Excel.
+  const copiarDosimetros = async (items) => {
+    const texto = items.map((a) => a.numeroDosimetro).join('\n')
+    try {
+      await navigator.clipboard.writeText(texto)
+      toast.success(`Copiados ${items.length} dosímetros`)
+    } catch {
+      toast.error('No se pudo copiar automáticamente. Usa la descarga del grupo.')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -242,18 +257,58 @@ export default function MisDosimetros() {
                 </p>
                 <div className="divide-y divide-mist/60">
                   {grupos.map((g) => (
-                    <div key={g.fecha} className="flex items-center justify-between py-2.5">
-                      <div className="text-sm">
-                        <span className="font-medium text-ink">{g.fecha}</span>
-                        <span className="text-slate-500"> · {g.cantidad} dosímetros</span>
+                    <div key={g.fecha} className="py-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleGrupo(g.fecha)}
+                          className="text-sm text-left hover:underline"
+                        >
+                          <span className="font-medium text-ink">
+                            {grupoAbierto === g.fecha ? '▾' : '▸'} {g.fecha}
+                          </span>
+                          <span className="text-slate-500"> · {g.cantidad} dosímetros</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => exportarLista(g.items, `${g.fecha}`)}
+                          className="text-sm text-steel hover:underline whitespace-nowrap"
+                        >
+                          Descargar grupo ↓
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => exportarLista(g.items, `${g.fecha}`)}
-                        className="text-sm text-steel hover:underline"
-                      >
-                        Descargar grupo ↓
-                      </button>
+
+                      {grupoAbierto === g.fecha && (
+                        <div className="mt-2 rounded-lg border border-mist/60 bg-cream/40 p-3">
+                          <div className="flex justify-end mb-2">
+                            <Button variant="secondary" onClick={() => copiarDosimetros(g.items)}>
+                              Copiar dosímetros
+                            </Button>
+                          </div>
+                          <div className="overflow-x-auto max-h-72 overflow-y-auto">
+                            <table className="w-full text-sm">
+                              <thead className="sticky top-0 bg-cream/80">
+                                <tr className="text-left text-slate-500 border-b border-slate-200">
+                                  <th className="py-1.5 font-medium">N° dosímetro</th>
+                                  <th className="py-1.5 font-medium">Tarea</th>
+                                  <th className="py-1.5 font-medium">Bandeja</th>
+                                  <th className="py-1.5 font-medium">Slot</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {g.items.map((a) => (
+                                  <tr key={a.id} className="border-b border-slate-100">
+                                    <td className="py-1.5 font-medium text-ink">{a.numeroDosimetro}</td>
+                                    <td className="py-1.5 text-slate-600">{a.numeroTarea || '—'}</td>
+                                    <td className="py-1.5 text-slate-600">{a.numeroBandeja ?? '—'}</td>
+                                    <td className="py-1.5 text-slate-600">{a.slotBandeja ?? '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
