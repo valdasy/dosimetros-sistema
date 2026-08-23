@@ -158,6 +158,48 @@ class ImportacionAsignacionServiceTest {
     }
 
     @Test
+    void importarOtroTrimestreNoBorraLaAsignacionDelTrimestreAnterior() {
+        // Crítico #4: el 200 ya tiene una asignación en 2T2025. Al importar el
+        // archivo del 3T2025 debe CREARSE un registro nuevo para ese trimestre y
+        // CONSERVARSE el de 2T2025 (historial de exposición), no sobrescribirlo.
+        Dosimetro d200 = dosimetroRepository.findByNumeroOrderByIdAsc(200).get(0);
+        Integer id200 = d200.getId();
+        assertEquals(1, asignacionRepository.findByDosimetroIdOrderByFechaAsignacionDesc(id200).size());
+
+        ImportacionAsignacionesResponse resp = service.importarExcel(excel(new String[][]{
+                {"200", "ACME", "Juan", "MarcaA", "Porta gringo", "3T2025", "http://a"},
+        }));
+
+        assertEquals(1, resp.getCreados());
+        assertEquals(0, resp.getActualizados());
+        assertEquals(0, resp.getSinCambios());
+
+        // Ahora hay DOS asignaciones: 2T2025 (preservada) y 3T2025 (nueva).
+        var todas = asignacionRepository.findByDosimetroIdOrderByFechaAsignacionDesc(id200);
+        assertEquals(2, todas.size());
+        assertEquals(1, todas.stream().filter(a -> "2T2025".equals(a.getTrimestre())).count());
+        assertEquals(1, todas.stream().filter(a -> "3T2025".equals(a.getTrimestre())).count());
+    }
+
+    @Test
+    void importarMismoTrimestreActualizaEnLugarDeDuplicar() {
+        // Contraparte del anterior: reimportar el MISMO trimestre con un cambio
+        // actualiza el registro existente, sin crear duplicados.
+        Dosimetro d300 = dosimetroRepository.findByNumeroOrderByIdAsc(300).get(0);
+        Integer id300 = d300.getId();
+
+        ImportacionAsignacionesResponse resp = service.importarExcel(excel(new String[][]{
+                {"300", "ACME", "Juan", "MarcaA", "Porta gringo", "2T2025", "http://actualizado"},
+        }));
+
+        assertEquals(0, resp.getCreados());
+        assertEquals(1, resp.getActualizados());
+        var todas = asignacionRepository.findByDosimetroIdOrderByFechaAsignacionDesc(id300);
+        assertEquals(1, todas.size());
+        assertEquals("http://actualizado", todas.get(0).getLinkTrello());
+    }
+
+    @Test
     void upsertReportaErrorSiElDosimetroNoExiste() {
         ImportacionAsignacionesResponse resp = service.importarExcel(excel(new String[][]{
                 {"999", "ACME", "Juan", "MarcaA", "Porta gringo", "2T2025", "http://a"},

@@ -29,6 +29,9 @@ services:
       context: ../backend
     restart: unless-stopped
     environment:
+      # Activa el perfil 'prod': StartupSecurityCheck aborta el arranque si
+      # JWT_SECRET o DB_PASSWORD siguen en su valor de desarrollo por defecto.
+      SPRING_PROFILES_ACTIVE: prod
       DB_URL: "jdbc:mysql://db:3306/dosimetros_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
       DB_USERNAME: dosimetros
       DB_PASSWORD: ${DB_PASSWORD}

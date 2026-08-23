@@ -1,7 +1,9 @@
 package com.dosimetros.backend.repository;
 
 import com.dosimetros.backend.entity.Dosimetro;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -84,6 +86,11 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
             @Param("slotHasta") Integer slotHasta
     );
 
+    // Bloqueo pesimista para evitar la condición de carrera en la asignación
+    // masiva: dos peticiones concurrentes no pueden leer el mismo dosímetro como
+    // disponible y entregarlo dos veces. Requiere transacción activa (la tiene
+    // AsignacionService.asignarMasivo).
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT d FROM Dosimetro d
         WHERE d.estado = 'disponible'
@@ -95,6 +102,14 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
             @Param("tareaIds") List<Integer> tareaIds,
             @Param("tipoDosimetroId") Integer tipoDosimetroId
     );
+
+    // Bloqueo pesimista para la asignación individual: se toma el dosímetro por
+    // id bloqueando la fila, de modo que dos peticiones concurrentes no puedan
+    // pasar ambas la validación de "disponible" sobre el mismo dosímetro.
+    // Requiere transacción activa (la tiene AsignacionService.crear).
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT d FROM Dosimetro d WHERE d.id = :id")
+    Optional<Dosimetro> findByIdParaAsignar(@Param("id") Integer id);
 
     // HU #9: dosímetros cuyo número físico se repite (más de un id con el mismo numero)
     @Query("""

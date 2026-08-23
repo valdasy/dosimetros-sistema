@@ -136,11 +136,21 @@ public class ImportacionAsignacionService {
                     List<Asignacion> previas = asignacionRepository
                             .findByDosimetroIdOrderByFechaAsignacionDesc(f.dosimetro().getId());
 
-                    if (previas.isEmpty()) {
+                    // Upsert por (dosímetro, trimestre): solo se actualiza la
+                    // asignación del MISMO trimestre del archivo. Si el dosímetro
+                    // fue asignado en otros trimestres, esos registros se conservan
+                    // (historial de exposición) y aquí se crea uno nuevo. Antes se
+                    // tomaba previas.get(0) —la más reciente sin importar trimestre—
+                    // y se mutaba in-place, borrando el historial del otro trimestre.
+                    Asignacion actual = previas.stream()
+                            .filter(a -> Objects.equals(a.getTrimestre(), f.trimestre()))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (actual == null) {
                         if (!dryRun) crearAsignacion(f);
                         creados++;
                     } else {
-                        Asignacion actual = previas.get(0); // la más reciente
                         if (mismaAsignacion(actual, f)) {
                             sinCambios++;
                         } else {
