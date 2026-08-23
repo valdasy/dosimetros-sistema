@@ -36,6 +36,52 @@ function normalizaTrimestre(valor) {
   return t
 }
 
+// Comprime una lista de slots en rangos legibles: [1,2,3,5,7,8] -> "1-3, 5, 7-8".
+function comprimirRangos(slots) {
+  const s = [...new Set(slots.filter((n) => n != null))].sort((a, b) => a - b)
+  if (!s.length) return ''
+  const partes = []
+  let ini = s[0], prev = s[0]
+  for (let i = 1; i < s.length; i++) {
+    if (s[i] === prev + 1) { prev = s[i]; continue }
+    partes.push(ini === prev ? `${ini}` : `${ini}-${prev}`)
+    ini = prev = s[i]
+  }
+  partes.push(ini === prev ? `${ini}` : `${ini}-${prev}`)
+  return partes.join(', ')
+}
+
+// Arma el texto copiable (para Trello) con las tareas/bandejas/slots ocupados,
+// agrupado por tarea y bandeja, con encabezado de cliente/trimestre/total.
+function construirResumenTexto(asignaciones) {
+  if (!asignaciones?.length) return ''
+  const a0 = asignaciones[0]
+  const grupos = new Map()
+  for (const a of asignaciones) {
+    const tarea = a.numeroTarea || 'Sin tarea'
+    const bandeja = a.numeroBandeja ?? null
+    const clave = `${tarea}||${bandeja ?? 'sb'}`
+    if (!grupos.has(clave)) grupos.set(clave, { tarea, bandeja, slots: [] })
+    if (a.slotBandeja != null) grupos.get(clave).slots.push(a.slotBandeja)
+  }
+  const arr = [...grupos.values()].sort((x, y) => {
+    const tx = Number(x.tarea) || 0, ty = Number(y.tarea) || 0
+    if (tx !== ty) return tx - ty
+    return (x.bandeja ?? -1) - (y.bandeja ?? -1)
+  })
+  const lineas = arr.map((g) => {
+    const band = g.bandeja != null ? `Bandeja ${g.bandeja}` : 'Sin bandeja'
+    const rangos = comprimirRangos(g.slots)
+    return `- Tarea ${g.tarea} · ${band}${rangos ? `: slots ${rangos}` : ''}`
+  })
+  return [
+    `Cliente: ${a0.clienteNombre} — Trimestre: ${a0.trimestre}`,
+    `Dosímetros asignados: ${asignaciones.length}`,
+    'Tareas ocupadas:',
+    ...lineas,
+  ].join('\n')
+}
+
 export default function Asignar() {
   const [vista, setVista] = useState('masiva') // 'masiva' | 'individual'
   const [clientes, setClientes] = useState([])
@@ -69,6 +115,16 @@ export default function Asignar() {
   const [loading, setLoading] = useState(false)
   const [exportando, setExportando] = useState(false)
   const toast = useToast()
+
+  const copiarResumen = async (asignaciones) => {
+    const texto = construirResumenTexto(asignaciones)
+    try {
+      await navigator.clipboard.writeText(texto)
+      toast.success('Resumen copiado (pégalo en Trello)')
+    } catch {
+      toast.error('No se pudo copiar automáticamente; selecciona y copia el texto de abajo.')
+    }
+  }
 
   const exportarResumen = async (asignaciones) => {
     setExportando(true)
@@ -435,13 +491,22 @@ export default function Asignar() {
             <Card
               title="Resumen de la asignación"
               action={
-                <Button
-                  variant="secondary"
-                  onClick={() => exportarResumen(resumenMasivo.asignaciones)}
-                  disabled={exportando || !resumenMasivo.asignaciones?.length}
-                >
-                  {exportando ? 'Exportando…' : 'Exportar a Excel'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => copiarResumen(resumenMasivo.asignaciones)}
+                    disabled={!resumenMasivo.asignaciones?.length}
+                  >
+                    Copiar resumen (Trello)
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => exportarResumen(resumenMasivo.asignaciones)}
+                    disabled={exportando || !resumenMasivo.asignaciones?.length}
+                  >
+                    {exportando ? 'Exportando…' : 'Exportar a Excel'}
+                  </Button>
+                </div>
               }
             >
               <p className="text-sm text-ink/80">
@@ -453,6 +518,16 @@ export default function Asignar() {
                   <span>Cliente: <b className="text-ink">{resumenMasivo.asignaciones[0].clienteNombre}</b></span>
                   <span>Trimestre: <b className="text-ink">{resumenMasivo.asignaciones[0].trimestre}</b></span>
                   <span>Porta: <b className="text-ink">{resumenMasivo.asignaciones[0].tipoPortaNombre}</b></span>
+                </div>
+              )}
+              {resumenMasivo.asignaciones?.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink/50 mb-1.5">
+                    Tareas / bandejas / slots ocupados (para Trello)
+                  </p>
+                  <pre className="text-xs bg-cream/60 border border-mist/60 rounded-lg p-3 whitespace-pre-wrap max-h-72 overflow-auto text-ink/80 font-mono">
+{construirResumenTexto(resumenMasivo.asignaciones)}
+                  </pre>
                 </div>
               )}
             </Card>
