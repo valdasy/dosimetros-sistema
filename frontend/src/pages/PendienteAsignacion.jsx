@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import {
-  getClientes,
-  getMisClientes,
   getEjecutivos,
   getResumenClienteTrimestre,
   getMisResumenClienteTrimestre,
@@ -17,7 +15,6 @@ export default function PendienteAsignacion() {
   const esEjecutivo = rol === 'EJECUTIVO'
   const toast = useToast()
 
-  const [clientes, setClientes] = useState([])
   const [conteos, setConteos] = useState([])
   const [ejecutivos, setEjecutivos] = useState([])
   const [ejecutivoId, setEjecutivoId] = useState('')
@@ -33,17 +30,11 @@ export default function PendienteAsignacion() {
 
   const cargar = () => {
     setLoading(true)
-    const pClientes = esEjecutivo
-      ? getMisClientes()
-      : getClientes(ejecutivoId ? { ejecutivoId } : undefined)
     const pConteos = esEjecutivo
       ? getMisResumenClienteTrimestre()
       : getResumenClienteTrimestre(ejecutivoId ? { ejecutivoId } : undefined)
-    Promise.all([pClientes, pConteos])
-      .then(([cl, co]) => {
-        setClientes(cl)
-        setConteos(co)
-      })
+    pConteos
+      .then(setConteos)
       .catch(() => toast.error('No se pudo cargar la información'))
       .finally(() => setLoading(false))
   }
@@ -61,6 +52,20 @@ export default function PendienteAsignacion() {
       map.get(c.clienteId)[c.trimestre] = c.cantidad
     }
     return map
+  }, [conteos])
+
+  // Clientes que aparecen en los conteos = clientes a los que el ejecutivo
+  // realmente ASIGNÓ (no el responsable actual del cliente). Así un cliente que
+  // cambió de ejecutivo no desaparece del ejecutivo que sí le asignó ese
+  // trimestre.
+  const clientesDeConteo = useMemo(() => {
+    const map = new Map()
+    for (const c of conteos) {
+      if (!map.has(c.clienteId)) {
+        map.set(c.clienteId, { id: c.clienteId, razonSocial: c.razonSocial })
+      }
+    }
+    return [...map.values()]
   }, [conteos])
 
   // Trimestres presentes en los datos (orden descendente por año y trimestre).
@@ -99,7 +104,7 @@ export default function PendienteAsignacion() {
   // ordenados por cantidad de mayor a menor.
   const filas = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
-    let lista = clientes
+    let lista = clientesDeConteo
     if (q) lista = lista.filter((c) => c.razonSocial.toLowerCase().includes(q))
     // Excluye a los clientes que no tuvieron asignación en el trimestre base.
     if (base) lista = lista.filter((c) => (porCliente.get(c.id)?.[base] || 0) > 0)
@@ -115,7 +120,7 @@ export default function PendienteAsignacion() {
       if (cb !== ca) return cb - ca
       return a.razonSocial.localeCompare(b.razonSocial)
     })
-  }, [clientes, busqueda, soloPendientes, base, colActual, porCliente])
+  }, [clientesDeConteo, busqueda, soloPendientes, base, colActual, porCliente])
 
   useEffect(() => { setPage(1) }, [busqueda, soloPendientes, trimestresSel, ejecutivoId])
 

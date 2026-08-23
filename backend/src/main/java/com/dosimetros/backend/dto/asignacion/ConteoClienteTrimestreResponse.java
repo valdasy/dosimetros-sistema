@@ -8,14 +8,16 @@ package com.dosimetros.backend.dto.asignacion;
 public class ConteoClienteTrimestreResponse {
 
     private Integer clienteId;
+    private String razonSocial;
     private String trimestre;
     private long cantidad;
 
     public ConteoClienteTrimestreResponse() {
     }
 
-    public ConteoClienteTrimestreResponse(Integer clienteId, String trimestre, long cantidad) {
+    public ConteoClienteTrimestreResponse(Integer clienteId, String razonSocial, String trimestre, long cantidad) {
         this.clienteId = clienteId;
+        this.razonSocial = razonSocial;
         this.trimestre = trimestre;
         this.cantidad = cantidad;
     }
@@ -26,6 +28,14 @@ public class ConteoClienteTrimestreResponse {
 
     public void setClienteId(Integer clienteId) {
         this.clienteId = clienteId;
+    }
+
+    public String getRazonSocial() {
+        return razonSocial;
+    }
+
+    public void setRazonSocial(String razonSocial) {
+        this.razonSocial = razonSocial;
     }
 
     public String getTrimestre() {

@@ -464,7 +464,7 @@ public class AsignacionService {
     public List<ConteoClienteTrimestreResponse> conteoPorClienteTrimestre(Integer ejecutivoId) {
         return asignacionRepository.conteoPorClienteTrimestre(ejecutivoId).stream()
                 .map(o -> new ConteoClienteTrimestreResponse(
-                        (Integer) o[0], (String) o[1], ((Number) o[2]).longValue()))
+                        (Integer) o[0], (String) o[1], (String) o[2], ((Number) o[3]).longValue()))
                 .toList();
     }
 
