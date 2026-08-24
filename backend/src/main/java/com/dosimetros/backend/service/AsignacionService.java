@@ -140,7 +140,9 @@ public class AsignacionService {
 
     @Transactional
     public AsignacionResponse crear(AsignacionRequest request) {
-        Dosimetro dosimetro = dosimetroRepository.findById(request.getDosimetroId())
+        // Lectura con bloqueo pesimista: evita que dos asignaciones individuales
+        // concurrentes tomen el mismo dosímetro disponible y lo entreguen dos veces.
+        Dosimetro dosimetro = dosimetroRepository.findByIdParaAsignar(request.getDosimetroId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Dosímetro no encontrado con id: " + request.getDosimetroId()
                 ));

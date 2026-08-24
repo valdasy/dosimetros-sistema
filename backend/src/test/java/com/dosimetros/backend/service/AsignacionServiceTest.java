@@ -122,7 +122,7 @@ class AsignacionServiceTest {
     @Test
     void crearFallaSiPortaNoEsCompatible() {
         // dosímetro TLD (tipo 2) con porta de tipo 3 -> incompatible
-        when(dosimetroRepository.findById(1)).thenReturn(Optional.of(dosimetro(1, "disponible", 2)));
+        when(dosimetroRepository.findByIdParaAsignar(1)).thenReturn(Optional.of(dosimetro(1, "disponible", 2)));
         Cliente c = new Cliente(); c.setId(1);
         Ejecutivo e = new Ejecutivo(); e.setId(1);
         Empresa emp = new Empresa(); emp.setId(1);
@@ -145,7 +145,7 @@ class AsignacionServiceTest {
 
     @Test
     void crearFallaSiElDosimetroNoEstaDisponible() {
-        when(dosimetroRepository.findById(1)).thenReturn(Optional.of(dosimetro(1, "asignado", 2)));
+        when(dosimetroRepository.findByIdParaAsignar(1)).thenReturn(Optional.of(dosimetro(1, "asignado", 2)));
         Cliente c = new Cliente(); c.setId(1);
         Ejecutivo e = new Ejecutivo(); e.setId(1);
         Empresa emp = new Empresa(); emp.setId(1);

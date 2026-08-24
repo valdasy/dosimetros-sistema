@@ -220,14 +220,20 @@ public class ExcelReaderService {
                         .replaceAll("\\s+", " ").trim();
                 if (header.isBlank()) continue;
 
-                if (matchesAny(header, "RUT", "R U T", "RUN", "CEDULA", "DNI", "DOCUMENTO")) {
-                    if (mapping.getColRut() == -1) mapping.setColRut(c);
+                // Importante: el patrón específico "NUMERO RUT"/"DV" (RUT partido en
+                // cuerpo + dígito verificador) debe evaluarse ANTES que el genérico
+                // "RUT". matchesAny usa contains(), así que "NUMERO RUT" también
+                // contiene "RUT": si el genérico se probara primero capturaría la
+                // columna del cuerpo como si fuera el RUT completo y el DV terminaría
+                // inventándose a partir del último dígito del cuerpo.
+                if (matchesAny(header, "NUMERO RUT", "NRO RUT", "CUERPO RUT", "RUT SIN DV")) {
+                    mapping.setColRutSinDv(c);
                 }
                 else if (matchesAny(header, "DV", "D V", "DIGITO", "VERIFICADOR")) {
                     mapping.setColDv(c);
                 }
-                else if (matchesAny(header, "NUMERO RUT", "NRO RUT", "CUERPO RUT", "RUT SIN DV")) {
-                    mapping.setColRutSinDv(c);
+                else if (matchesAny(header, "RUT", "R U T", "RUN", "CEDULA", "DNI", "DOCUMENTO")) {
+                    if (mapping.getColRut() == -1) mapping.setColRut(c);
                 }
                 else if (matchesAny(header, "NOMBRE COMPLETO", "NOMBRE Y APELLIDO", "NOMBRES Y APELLIDOS",
                         "NOMBRE APELLIDO", "APELLIDO NOMBRE", "NOMBRE APELLIDOS")) {
