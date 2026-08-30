@@ -41,7 +41,7 @@ sudo usermod -aG docker "$USER"    # cierra sesión y vuelve a entrar
 ## 4. Clonar el proyecto y configurar
 
 ```bash
-git clone https://github.com/vichinho/dosimetros-sistema.git
+git clone https://github.com/valdasy/dosimetros-sistema.git
 cd dosimetros-sistema/deploy
 
 cp .env.example .env
