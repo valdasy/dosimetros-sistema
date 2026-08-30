@@ -17,6 +17,7 @@ import MisDosimetros from './pages/MisDosimetros'
 import MisClientes from './pages/MisClientes'
 import Comparador from './pages/Comparador'
 import PendienteAsignacion from './pages/PendienteAsignacion'
+import InformeIsp from './pages/InformeIsp'
 
 // Redirige a la pantalla inicial según el rol.
 function Home() {
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="/duplicados" element={<ProtectedRoute roles={OPER}><Duplicados /></ProtectedRoute>} />
         <Route path="/tipos-porta" element={<ProtectedRoute roles={OPER}><TiposPorta /></ProtectedRoute>} />
         <Route path="/importar" element={<ProtectedRoute roles={['ADMIN']}><Importar /></ProtectedRoute>} />
+        <Route path="/informe-isp" element={<ProtectedRoute roles={['ADMIN']}><InformeIsp /></ProtectedRoute>} />
         {/* Módulo unificado: usuarios de acceso (ADMIN) + ejecutivos (ADMIN/OPERADOR) */}
         <Route path="/usuarios-ejecutivos" element={<ProtectedRoute roles={OPER}><UsuariosEjecutivos /></ProtectedRoute>} />
         {/* Compatibilidad con rutas antiguas */}

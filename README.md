@@ -8,7 +8,7 @@
   <img alt="Frontend" src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?logo=react&logoColor=black">
   <img alt="Java" src="https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white">
   <img alt="DB" src="https://img.shields.io/badge/DB-MySQL%208-4479A1?logo=mysql&logoColor=white">
-  <img alt="Tests" src="https://img.shields.io/badge/Tests-34%20passing-brightgreen">
+  <img alt="Tests" src="https://img.shields.io/badge/Tests-48%20passing-brightgreen">
 </p>
 
 ---
@@ -150,6 +150,7 @@ Solo consulta lo suyo, sin poder modificar el inventario:
 | **Duplicados** | Números repetidos en el sistema; permite sacar/backup uno de los dos. | Admin · Operador |
 | **Tipos de porta** | Catálogo de portas por tipo de dosímetro. | Admin · Operador |
 | **Importar Excel** | Carga masiva inicial de dosímetros. | Administrador |
+| **Informe ISP** | Genera el informe dosimétrico trimestral para el ISP (RND): asigna códigos y produce el Excel oficial. | Administrador |
 | **Usuarios y ejecutivos** | Módulo unificado: cuentas de acceso (login + rol) y comerciales. | Admin (usuarios) · Operador (ejecutivos) |
 | **Mis dosímetros** | Consulta filtrable del ejecutivo, con lotes por fecha y export. | Ejecutivo |
 | **Mis clientes** | Clientes del ejecutivo, con buscador y pendientes. | Ejecutivo |
@@ -283,13 +284,14 @@ desde el Excel, ver [`migracion/README.md`](migracion/README.md).
 cd backend && ./mvnw test
 ```
 
-**34 pruebas** que cubren la lógica crítica (importación/actualización de stock,
+**48 pruebas** que cubren la lógica crítica (importación/actualización de stock,
 asignaciones, reglas de duplicados, seguridad de login) sobre **H2** — no requieren
 MySQL.
 
 ## Documentación
 
 - 📘 **Manual de usuario** (por módulo y por rol): [`docs/MANUAL_USUARIO.md`](docs/MANUAL_USUARIO.md).
+- 🧾 **Módulo Informe ISP (RND)** — especificación funcional, reglas y mapeos: [`docs/INFORME_ISP.md`](docs/INFORME_ISP.md).
 - 🚀 **Guía de despliegue** (Docker + HTTPS): [`deploy/DESPLIEGUE.md`](deploy/DESPLIEGUE.md).
 - 🔒 **Checklist de seguridad**: [`deploy/SEGURIDAD.md`](deploy/SEGURIDAD.md).
 
