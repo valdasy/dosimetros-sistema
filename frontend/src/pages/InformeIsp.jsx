@@ -180,6 +180,13 @@ export default function InformeIsp() {
       </Card>
 
       <Card title="2. Generar informe ISP (desde el Informe de Dosis crudo)">
+        <p className="text-sm text-slate-500 mb-3">
+          La <b>tecnología</b> se toma de la columna <code>Tecnologia</code> del informe si
+          viene (TLD/OSL/FILM); si no, de la maestra o el default del laboratorio.
+          <b> COD CARGO</b> y <b>COD PRAC</b> se completan por <b>empresa + RUT</b> desde la
+          maestra del trimestre anterior; los que no calcen quedan <b>en blanco</b> y se
+          listan en la hoja <b>REVISION</b> para llenarlos a mano.
+        </p>
         <form onSubmit={analizar} className="space-y-4">
           <Select label="Empresa" value={empInforme} onChange={(e) => setEmpInforme(e.target.value)}>
             {empresas.map((emp) => (
