@@ -163,3 +163,23 @@ export const compararDosimetria = (softwareFile, clientFile) => {
 }
 export const descargarPlantillaComparador = () =>
   client.get('/ejecutivo/comparador/plantilla', { responseType: 'blob' }).then((r) => r.data)
+
+// --- Informe ISP (Registro Nacional de Dosis) ---
+export const getEstadoIsp = () => client.get('/isp/estado').then((r) => r.data)
+export const importarMaestraIsp = (file, empresaId) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return client.post('/isp/maestra/importar', fd, { params: { empresaId } }).then((r) => r.data)
+}
+export const analizarInformeIsp = (file, empresaId) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return client.post('/isp/informe/analizar', fd, { params: { empresaId } }).then((r) => r.data)
+}
+export const generarInformeIsp = (file, empresaId) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return client
+    .post('/isp/informe/generar', fd, { params: { empresaId }, responseType: 'blob' })
+    .then((r) => r.data)
+}
