@@ -14,8 +14,8 @@ public class IspCodigoServicio {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "empresa_id", nullable = false)
-    private Integer empresaId;
+    @Column(nullable = false, length = 20)
+    private String empresa;
 
     @Column(nullable = false, length = 20)
     private String tecnologia;
@@ -40,12 +40,12 @@ public class IspCodigoServicio {
         this.id = id;
     }
 
-    public Integer getEmpresaId() {
-        return empresaId;
+    public String getEmpresa() {
+        return empresa;
     }
 
-    public void setEmpresaId(Integer empresaId) {
-        this.empresaId = empresaId;
+    public void setEmpresa(String empresa) {
+        this.empresa = empresa;
     }
 
     public String getTecnologia() {

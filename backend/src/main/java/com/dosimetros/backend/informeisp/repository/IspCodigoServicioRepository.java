@@ -7,6 +7,6 @@ import java.util.Optional;
 
 public interface IspCodigoServicioRepository extends JpaRepository<IspCodigoServicio, Integer> {
 
-    Optional<IspCodigoServicio> findByEmpresaIdAndTecnologiaAndMagnitudAndPeriodicidad(
-            Integer empresaId, String tecnologia, String magnitud, String periodicidad);
+    Optional<IspCodigoServicio> findByEmpresaAndTecnologiaAndMagnitudAndPeriodicidad(
+            String empresa, String tecnologia, String magnitud, String periodicidad);
 }

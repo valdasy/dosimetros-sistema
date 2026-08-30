@@ -14,8 +14,8 @@ public class IspClienteTecnologia {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "empresa_id", nullable = false)
-    private Integer empresaId;
+    @Column(nullable = false, length = 20)
+    private String empresa;
 
     @Column(name = "rut_entidad", nullable = false, length = 15)
     private String rutEntidad;
@@ -26,8 +26,8 @@ public class IspClienteTecnologia {
     public IspClienteTecnologia() {
     }
 
-    public IspClienteTecnologia(Integer empresaId, String rutEntidad, String tecnologia) {
-        this.empresaId = empresaId;
+    public IspClienteTecnologia(String empresa, String rutEntidad, String tecnologia) {
+        this.empresa = empresa;
         this.rutEntidad = rutEntidad;
         this.tecnologia = tecnologia;
     }
@@ -40,12 +40,12 @@ public class IspClienteTecnologia {
         this.id = id;
     }
 
-    public Integer getEmpresaId() {
-        return empresaId;
+    public String getEmpresa() {
+        return empresa;
     }
 
-    public void setEmpresaId(Integer empresaId) {
-        this.empresaId = empresaId;
+    public void setEmpresa(String empresa) {
+        this.empresa = empresa;
     }
 
     public String getRutEntidad() {

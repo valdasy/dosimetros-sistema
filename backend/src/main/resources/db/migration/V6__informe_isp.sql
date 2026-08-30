@@ -1,21 +1,23 @@
 -- Módulo Informe ISP (Registro Nacional de Dosis - RND).
 -- Ver especificación funcional en docs/INFORME_ISP.md.
 --
--- Catálogos (isp_codigo_servicio, isp_clasificador) se siembran aquí porque no son
--- datos personales. Las maestras aprendidas (isp_persona_codigo, isp_cliente_tecnologia)
--- se crean VACÍAS y se cargan desde la app (contienen datos personales, no van en git).
+-- Módulo autocontenido: no tiene relación (FK) con las tablas del resto del
+-- sistema. La empresa (laboratorio: Dosimet | Photomat) se guarda como texto
+-- propio en cada tabla. Catálogos (isp_codigo_servicio, isp_clasificador) se
+-- siembran aquí porque no son datos personales. Las maestras aprendidas
+-- (isp_persona_codigo, isp_cliente_tecnologia) se crean VACÍAS y se cargan
+-- desde la app (contienen datos personales, no van en git).
 
 -- Códigos de Servicio RND: (empresa, tecnología, magnitud, periodicidad) -> código.
 CREATE TABLE isp_codigo_servicio (
     id           INT          NOT NULL AUTO_INCREMENT,
-    empresa_id   INT          NOT NULL,
+    empresa      VARCHAR(20)  NOT NULL,        -- Dosimet | Photomat (laboratorio)
     tecnologia   VARCHAR(20)  NOT NULL,        -- TLD | OSL | FILM
     magnitud     VARCHAR(10)  NOT NULL,        -- HP10 | HP0.07 | HP3
     periodicidad VARCHAR(20)  NOT NULL,        -- TRIMESTRAL | BIMENSUAL | MENSUAL
     codigo       INT          NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_isp_codserv_empresa FOREIGN KEY (empresa_id) REFERENCES empresa (id),
-    CONSTRAINT uk_isp_codserv UNIQUE (empresa_id, tecnologia, magnitud, periodicidad)
+    CONSTRAINT uk_isp_codserv UNIQUE (empresa, tecnologia, magnitud, periodicidad)
 ) ENGINE = InnoDB;
 
 -- Clasificadores del ISP (cargo, práctica, localización, sector): código + nombre.
@@ -41,38 +43,33 @@ CREATE TABLE isp_persona_codigo (
 -- Maestra por cliente: (empresa, RUT entidad) -> tecnología. Se importa desde la app.
 CREATE TABLE isp_cliente_tecnologia (
     id          INT         NOT NULL AUTO_INCREMENT,
-    empresa_id  INT         NOT NULL,
+    empresa     VARCHAR(20) NOT NULL,          -- Dosimet | Photomat (laboratorio)
     rut_entidad VARCHAR(15) NOT NULL,
     tecnologia  VARCHAR(20) NOT NULL,          -- TLD | OSL | FILM
     PRIMARY KEY (id),
-    CONSTRAINT fk_isp_clitec_empresa FOREIGN KEY (empresa_id) REFERENCES empresa (id),
-    CONSTRAINT uk_isp_clitec UNIQUE (empresa_id, rut_entidad)
+    CONSTRAINT uk_isp_clitec UNIQUE (empresa, rut_entidad)
 ) ENGINE = InnoDB;
 
 -- ---------------------------------------------------------------------------
 -- Semilla: Códigos de Servicio RND
 -- ---------------------------------------------------------------------------
-INSERT INTO isp_codigo_servicio (empresa_id, tecnologia, magnitud, periodicidad, codigo)
-SELECT e.id, x.tecnologia, x.magnitud, x.periodicidad, x.codigo
-FROM (
-    SELECT 'Dosimet'  AS empresa, 'TLD'  AS tecnologia, 'HP10'   AS magnitud, 'TRIMESTRAL' AS periodicidad, 3  AS codigo UNION ALL
-    SELECT 'Dosimet', 'TLD',  'HP10',   'BIMENSUAL',  4  UNION ALL
-    SELECT 'Dosimet', 'TLD',  'HP10',   'MENSUAL',    5  UNION ALL
-    SELECT 'Dosimet', 'TLD',  'HP0.07', 'TRIMESTRAL', 6  UNION ALL
-    SELECT 'Dosimet', 'TLD',  'HP0.07', 'BIMENSUAL',  7  UNION ALL
-    SELECT 'Dosimet', 'OSL',  'HP10',   'TRIMESTRAL', 50 UNION ALL
-    SELECT 'Dosimet', 'OSL',  'HP10',   'MENSUAL',    51 UNION ALL
-    SELECT 'Dosimet', 'OSL',  'HP0.07', 'TRIMESTRAL', 52 UNION ALL
-    SELECT 'Dosimet', 'OSL',  'HP0.07', 'MENSUAL',    53 UNION ALL
-    SELECT 'Dosimet', 'OSL',  'HP3',    'TRIMESTRAL', 54 UNION ALL
-    SELECT 'Dosimet', 'OSL',  'HP3',    'MENSUAL',    55 UNION ALL
-    SELECT 'Photomat', 'TLD',  'HP10',   'TRIMESTRAL', 43 UNION ALL
-    SELECT 'Photomat', 'TLD',  'HP10',   'MENSUAL',    45 UNION ALL
-    SELECT 'Photomat', 'TLD',  'HP0.07', 'TRIMESTRAL', 44 UNION ALL
-    SELECT 'Photomat', 'TLD',  'HP0.07', 'MENSUAL',    46 UNION ALL
-    SELECT 'Photomat', 'FILM', 'HP10',   'TRIMESTRAL', 2
-) x
-JOIN empresa e ON e.nombre = x.empresa;
+INSERT INTO isp_codigo_servicio (empresa, tecnologia, magnitud, periodicidad, codigo) VALUES
+    ('Dosimet',  'TLD',  'HP10',   'TRIMESTRAL', 3),
+    ('Dosimet',  'TLD',  'HP10',   'BIMENSUAL',  4),
+    ('Dosimet',  'TLD',  'HP10',   'MENSUAL',    5),
+    ('Dosimet',  'TLD',  'HP0.07', 'TRIMESTRAL', 6),
+    ('Dosimet',  'TLD',  'HP0.07', 'BIMENSUAL',  7),
+    ('Dosimet',  'OSL',  'HP10',   'TRIMESTRAL', 50),
+    ('Dosimet',  'OSL',  'HP10',   'MENSUAL',    51),
+    ('Dosimet',  'OSL',  'HP0.07', 'TRIMESTRAL', 52),
+    ('Dosimet',  'OSL',  'HP0.07', 'MENSUAL',    53),
+    ('Dosimet',  'OSL',  'HP3',    'TRIMESTRAL', 54),
+    ('Dosimet',  'OSL',  'HP3',    'MENSUAL',    55),
+    ('Photomat', 'TLD',  'HP10',   'TRIMESTRAL', 43),
+    ('Photomat', 'TLD',  'HP10',   'MENSUAL',    45),
+    ('Photomat', 'TLD',  'HP0.07', 'TRIMESTRAL', 44),
+    ('Photomat', 'TLD',  'HP0.07', 'MENSUAL',    46),
+    ('Photomat', 'FILM', 'HP10',   'TRIMESTRAL', 2);
 
 -- ---------------------------------------------------------------------------
 -- Semilla: Clasificadores ISP

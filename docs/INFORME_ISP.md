@@ -203,6 +203,11 @@ El ISP acepta en `OBSERVA`: `NU`, `DD`, `NR`, `<LD` o vacío.
 
 ## 8. Modelo de datos (tablas `isp_*`)
 
+Módulo **autocontenido**: las tablas `isp_*` no tienen relación (FK) con el resto
+del sistema. La **empresa** (laboratorio: `Dosimet` | `Photomat`) se guarda como
+texto propio en cada tabla y su lista la provee el propio módulo
+(`GET /api/isp/empresas`), no la tabla `empresa` del sistema.
+
 | Tabla | Contenido | Semilla en git |
 |---|---|---|
 | `isp_codigo_servicio` | Códigos RND (empresa, tecnología, magnitud, periodicidad → código) | ✅ Flyway V6 |
