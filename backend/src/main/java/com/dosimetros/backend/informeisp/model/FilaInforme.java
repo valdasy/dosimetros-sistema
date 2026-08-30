@@ -21,4 +21,5 @@ public class FilaInforme {
     public String dosisCristalino;  // Hp(3)
     public String ubicacion;
     public String periodicidad;
+    public String tecnologia;       // opcional: TLD | OSL | FILM (columna del informe)
 }

@@ -63,6 +63,7 @@ public class InformeReaderService {
                 f.dosisCristalino = val(fmt, row, col, "dosis cristalino");
                 f.ubicacion = val(fmt, row, col, "ubicacion");
                 f.periodicidad = val(fmt, row, col, "periodicidad");
+                f.tecnologia = val(fmt, row, col, "tecnologia"); // opcional
 
                 if (esFilaVacia(f)) continue;
                 filas.add(f);

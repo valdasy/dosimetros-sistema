@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface IspPersonaCodigoRepository extends JpaRepository<IspPersonaCodigo, Integer> {
 
-    Optional<IspPersonaCodigo> findByRut(String rut);
+    Optional<IspPersonaCodigo> findByEmpresaAndRut(String empresa, String rut);
 }

@@ -75,7 +75,7 @@ public class MaestraImportService {
                 }
             }
 
-            int personas = upsertPersonas(cargoCnt, pracCnt);
+            int personas = upsertPersonas(empresa, cargoCnt, pracCnt);
             int clientes = upsertClientes(empresa, tecCnt);
 
             Map<String, Integer> resumen = new LinkedHashMap<>();
@@ -85,15 +85,19 @@ public class MaestraImportService {
         }
     }
 
-    private int upsertPersonas(Map<String, Map<Integer, Integer>> cargoCnt,
+    private int upsertPersonas(String empresa, Map<String, Map<Integer, Integer>> cargoCnt,
                                Map<String, Map<Integer, Integer>> pracCnt) {
         Set<String> ruts = new HashSet<>();
         ruts.addAll(cargoCnt.keySet());
         ruts.addAll(pracCnt.keySet());
 
+        // Solo las personas ya aprendidas de este laboratorio (match por empresa + RUT).
+        String empresaNorm = IspMappings.norm(empresa);
         Map<String, IspPersonaCodigo> existentes = new HashMap<>();
         for (IspPersonaCodigo p : personaRepo.findAll()) {
-            existentes.put(IspMappings.norm(p.getRut()), p);
+            if (empresaNorm.equals(IspMappings.norm(p.getEmpresa()))) {
+                existentes.put(IspMappings.norm(p.getRut()), p);
+            }
         }
         List<IspPersonaCodigo> guardar = new ArrayList<>();
         for (String rut : ruts) {
@@ -101,7 +105,7 @@ public class MaestraImportService {
             Integer prac = moda(pracCnt.get(rut));
             IspPersonaCodigo p = existentes.get(rut);
             if (p == null) {
-                p = new IspPersonaCodigo(rut, cargo, prac);
+                p = new IspPersonaCodigo(empresa, rut, cargo, prac);
             } else {
                 p.setCodCargo(cargo);
                 p.setCodPrac(prac);

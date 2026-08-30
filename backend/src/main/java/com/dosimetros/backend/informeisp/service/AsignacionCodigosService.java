@@ -42,9 +42,12 @@ public class AsignacionCodigosService {
         String empresaNorm = IspMappings.norm(empresa);
 
         // --- Maestras en memoria (evita consultas por fila) ---
+        // Personas: solo las del laboratorio en proceso (match por empresa + RUT).
         Map<String, IspPersonaCodigo> personaMap = new HashMap<>();
         for (IspPersonaCodigo p : personaRepo.findAll()) {
-            personaMap.put(IspMappings.norm(p.getRut()), p);
+            if (empresaNorm.equals(IspMappings.norm(p.getEmpresa()))) {
+                personaMap.put(IspMappings.norm(p.getRut()), p);
+            }
         }
         Map<String, String> clienteTecMap = new HashMap<>();
         for (IspClienteTecnologia t : clienteTecRepo.findAll()) {
@@ -59,18 +62,6 @@ public class AsignacionCodigosService {
             }
         }
         String tecDefault = DEFAULT_TEC.getOrDefault(empresaNorm, "TLD");
-
-        // --- Sugerencias por cliente para personas nuevas ---
-        Map<String, Map<Integer, Integer>> entidadCargo = new HashMap<>();
-        Map<String, Map<Integer, Integer>> entidadPrac = new HashMap<>();
-        for (FilaInforme f : filas) {
-            String rut = IspMappings.norm(f.rut);
-            IspPersonaCodigo p = personaMap.get(rut);
-            if (p == null) continue;
-            String ent = IspMappings.norm(f.documentoCliente);
-            if (p.getCodCargo() != null) contar(entidadCargo, ent, p.getCodCargo());
-            if (p.getCodPrac() != null) contar(entidadPrac, ent, p.getCodPrac());
-        }
 
         // --- Procesamiento fila a fila ---
         Map<String, PersonaToes> personas = new LinkedHashMap<>();
@@ -109,22 +100,23 @@ public class AsignacionCodigosService {
                 res.filasEliminadas++;
                 continue;
             }
-            String ubi = IspMappings.norm(f.ubicacion);
-            if (ubi.equals("ANILLO/ PULSERA") || ubi.equals("ANILLO/PULSERA")) {
-                res.inconsistencias.add(new Inconsistencia(f.filaExcel, f.rut, f.usuario, f.cliente,
-                        "DEDO_MUNECA_SIN_MARCAR",
-                        "Ubicacion 'ANILLO/PULSERA' sin distinguir dedo/muñeca. Se asume localización 2 (dedo)."));
-            }
 
-            // Tecnología del cliente
+            // Tecnología: 1) columna 'tecnologia' del informe, 2) maestra por
+            // cliente, 3) default del laboratorio (se marca solo en el caso 3).
             String ent = IspMappings.norm(f.documentoCliente);
-            String tec = clienteTecMap.get(ent);
-            if (tec == null) {
-                tec = tecDefault;
-                if (clientesSinTec.add(ent)) {
-                    res.inconsistencias.add(new Inconsistencia(f.filaExcel, f.rut, f.usuario, f.cliente,
-                            "CLIENTE_SIN_TECNOLOGIA",
-                            "Cliente sin tecnología en la maestra. Se usa el default de la empresa: " + tecDefault + "."));
+            String tec;
+            if (!IspMappings.vacio(f.tecnologia)) {
+                tec = IspMappings.norm(f.tecnologia);
+            } else {
+                tec = clienteTecMap.get(ent);
+                if (tec == null) {
+                    tec = tecDefault;
+                    if (clientesSinTec.add(ent)) {
+                        res.inconsistencias.add(new Inconsistencia(f.filaExcel, f.rut, f.usuario, f.cliente,
+                                "CLIENTE_SIN_TECNOLOGIA",
+                                "Cliente sin tecnología (ni en la columna 'tecnologia' ni en la maestra). "
+                                        + "Se usa el default del laboratorio: " + tecDefault + "."));
+                    }
                 }
             }
 
@@ -137,7 +129,9 @@ public class AsignacionCodigosService {
                         "No hay Código de Servicio para " + tec + " / " + magnitud + " / " + periodo + "."));
             }
 
-            // COD PRAC / COD CARGO
+            // COD PRAC / COD CARGO: match por (empresa + RUT) contra la maestra
+            // del trimestre anterior. Sin match -> quedan en blanco y se listan
+            // en REVISION para completarlos a mano.
             Integer codCargo = null;
             Integer codPrac = null;
             IspPersonaCodigo persona = personaMap.get(rut);
@@ -145,13 +139,10 @@ public class AsignacionCodigosService {
                 codCargo = persona.getCodCargo();
                 codPrac = persona.getCodPrac();
             } else {
-                codCargo = moda(entidadCargo.get(ent));
-                codPrac = moda(entidadPrac.get(ent));
-                String sug = "cargo=" + (codCargo == null ? "?" : codCargo)
-                        + ", práctica=" + (codPrac == null ? "?" : codPrac);
                 res.inconsistencias.add(new Inconsistencia(f.filaExcel, f.rut, f.usuario, f.cliente,
-                        "PERSONA_NUEVA",
-                        "RUT no está en la maestra. Sugerencia por cliente: " + sug + ". Revisar."));
+                        "PERSONA_SIN_CARGO_PRAC",
+                        "RUT no está en la maestra de " + empresa + " (trimestre anterior). "
+                                + "COD CARGO y COD PRAC quedan en blanco para completar manualmente."));
             }
 
             // Dosis + OBSERVA
@@ -189,17 +180,5 @@ public class AsignacionCodigosService {
 
     private static String claveServ(String tec, String magnitud, String periodo) {
         return tec + "|" + magnitud + "|" + periodo;
-    }
-
-    private static void contar(Map<String, Map<Integer, Integer>> map, String key, Integer val) {
-        map.computeIfAbsent(key, k -> new HashMap<>()).merge(val, 1, Integer::sum);
-    }
-
-    private static Integer moda(Map<Integer, Integer> counter) {
-        if (counter == null || counter.isEmpty()) return null;
-        return counter.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(null);
     }
 }
