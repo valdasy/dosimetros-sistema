@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface IspClienteTecnologiaRepository extends JpaRepository<IspClienteTecnologia, Integer> {
 
-    Optional<IspClienteTecnologia> findByEmpresaIdAndRutEntidad(Integer empresaId, String rutEntidad);
+    Optional<IspClienteTecnologia> findByEmpresaAndRutEntidad(String empresa, String rutEntidad);
 }

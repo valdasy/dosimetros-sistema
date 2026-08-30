@@ -35,10 +35,11 @@ public class AsignacionCodigosService {
         this.clienteTecRepo = clienteTecRepo;
     }
 
-    public ResultadoProceso procesar(Integer empresaId, String empresaNombre, List<FilaInforme> filas) {
+    public ResultadoProceso procesar(String empresa, List<FilaInforme> filas) {
         ResultadoProceso res = new ResultadoProceso();
-        res.empresa = empresaNombre;
+        res.empresa = empresa;
         res.filasTotales = filas.size();
+        String empresaNorm = IspMappings.norm(empresa);
 
         // --- Maestras en memoria (evita consultas por fila) ---
         Map<String, IspPersonaCodigo> personaMap = new HashMap<>();
@@ -47,17 +48,17 @@ public class AsignacionCodigosService {
         }
         Map<String, String> clienteTecMap = new HashMap<>();
         for (IspClienteTecnologia t : clienteTecRepo.findAll()) {
-            if (Objects.equals(t.getEmpresaId(), empresaId)) {
+            if (empresaNorm.equals(IspMappings.norm(t.getEmpresa()))) {
                 clienteTecMap.put(IspMappings.norm(t.getRutEntidad()), t.getTecnologia());
             }
         }
         Map<String, Integer> codServMap = new HashMap<>();
         for (IspCodigoServicio c : codigoServicioRepo.findAll()) {
-            if (Objects.equals(c.getEmpresaId(), empresaId)) {
+            if (empresaNorm.equals(IspMappings.norm(c.getEmpresa()))) {
                 codServMap.put(claveServ(c.getTecnologia(), c.getMagnitud(), c.getPeriodicidad()), c.getCodigo());
             }
         }
-        String tecDefault = DEFAULT_TEC.getOrDefault(IspMappings.norm(empresaNombre), "TLD");
+        String tecDefault = DEFAULT_TEC.getOrDefault(empresaNorm, "TLD");
 
         // --- Sugerencias por cliente para personas nuevas ---
         Map<String, Map<Integer, Integer>> entidadCargo = new HashMap<>();

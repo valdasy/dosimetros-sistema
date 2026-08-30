@@ -43,7 +43,7 @@ public class MaestraImportService {
     }
 
     @Transactional
-    public Map<String, Integer> importar(MultipartFile file, Integer empresaId) throws IOException {
+    public Map<String, Integer> importar(MultipartFile file, String empresa) throws IOException {
         try (InputStream in = file.getInputStream();
              Workbook wb = WorkbookFactory.create(in)) {
 
@@ -76,7 +76,7 @@ public class MaestraImportService {
             }
 
             int personas = upsertPersonas(cargoCnt, pracCnt);
-            int clientes = upsertClientes(empresaId, tecCnt);
+            int clientes = upsertClientes(empresa, tecCnt);
 
             Map<String, Integer> resumen = new LinkedHashMap<>();
             resumen.put("personas", personas);
@@ -112,14 +112,14 @@ public class MaestraImportService {
         return guardar.size();
     }
 
-    private int upsertClientes(Integer empresaId, Map<String, Map<String, Integer>> tecCnt) {
+    private int upsertClientes(String empresa, Map<String, Map<String, Integer>> tecCnt) {
         List<IspClienteTecnologia> guardar = new ArrayList<>();
         for (Map.Entry<String, Map<String, Integer>> e : tecCnt.entrySet()) {
             String rutEnt = e.getKey();
             String tec = modaStr(e.getValue());
             IspClienteTecnologia t = clienteTecRepo
-                    .findByEmpresaIdAndRutEntidad(empresaId, rutEnt)
-                    .orElseGet(() -> new IspClienteTecnologia(empresaId, rutEnt, tec));
+                    .findByEmpresaAndRutEntidad(empresa, rutEnt)
+                    .orElseGet(() -> new IspClienteTecnologia(empresa, rutEnt, tec));
             t.setTecnologia(tec);
             guardar.add(t);
         }

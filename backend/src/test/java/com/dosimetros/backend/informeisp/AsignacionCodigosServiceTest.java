@@ -27,9 +27,9 @@ class AsignacionCodigosServiceTest {
     private final AsignacionCodigosService service =
             new AsignacionCodigosService(codServRepo, personaRepo, clienteTecRepo);
 
-    private IspCodigoServicio serv(int empresaId, String tec, String mag, String per, int codigo) {
+    private IspCodigoServicio serv(String empresa, String tec, String mag, String per, int codigo) {
         IspCodigoServicio c = new IspCodigoServicio();
-        c.setEmpresaId(empresaId);
+        c.setEmpresa(empresa);
         c.setTecnologia(tec);
         c.setMagnitud(mag);
         c.setPeriodicidad(per);
@@ -60,18 +60,18 @@ class AsignacionCodigosServiceTest {
     @Test
     void asignaCodigosDesdeMaestrasYReglas() {
         when(codServRepo.findAll()).thenReturn(List.of(
-                serv(2, "TLD", "HP10", "TRIMESTRAL", 3)));
+                serv("Dosimet", "TLD", "HP10", "TRIMESTRAL", 3)));
         when(personaRepo.findAll()).thenReturn(List.of(
                 new IspPersonaCodigo("11111111-1", 10, 5)));
         when(clienteTecRepo.findAll()).thenReturn(List.of(
-                new IspClienteTecnologia(2, "76458223-3", "TLD")));
+                new IspClienteTecnologia("Dosimet", "76458223-3", "TLD")));
 
         List<FilaInforme> filas = List.of(
                 fila(2, "HOSPITAL X", "76458223-3", "11111111-1", "JUAN PEREZ", "Masculino",
                         "CUERPO COMPLETO/ PERSONAL", "AB123", "PERSONAL", "TRIMESTRAL",
                         "0.101", "-", "-"));
 
-        ResultadoProceso res = service.procesar(2, "Dosimet", filas);
+        ResultadoProceso res = service.procesar("Dosimet", filas);
 
         assertEquals(1, res.dosis.size());
         FilaDosis d = res.dosis.get(0);
@@ -86,7 +86,7 @@ class AsignacionCodigosServiceTest {
 
     @Test
     void eliminaFilasSinRutOSinDosimetro() {
-        when(codServRepo.findAll()).thenReturn(List.of(serv(2, "TLD", "HP10", "TRIMESTRAL", 3)));
+        when(codServRepo.findAll()).thenReturn(List.of(serv("Dosimet", "TLD", "HP10", "TRIMESTRAL", 3)));
         when(personaRepo.findAll()).thenReturn(List.of());
         when(clienteTecRepo.findAll()).thenReturn(List.of());
 
@@ -98,7 +98,7 @@ class AsignacionCodigosServiceTest {
         filas.add(fila(3, "C", "76000000-0", "22222222-2", "ANA", "Femenino",
                 "CUERPO COMPLETO/ PERSONAL", "", "PERSONAL", "TRIMESTRAL", "MNR", "-", "-"));
 
-        ResultadoProceso res = service.procesar(2, "Dosimet", filas);
+        ResultadoProceso res = service.procesar("Dosimet", filas);
 
         assertEquals(0, res.dosis.size());
         assertEquals(2, res.filasEliminadas);
@@ -106,11 +106,11 @@ class AsignacionCodigosServiceTest {
 
     @Test
     void personaNuevaGeneraInconsistenciaYSugerencia() {
-        when(codServRepo.findAll()).thenReturn(List.of(serv(2, "TLD", "HP10", "TRIMESTRAL", 3)));
+        when(codServRepo.findAll()).thenReturn(List.of(serv("Dosimet", "TLD", "HP10", "TRIMESTRAL", 3)));
         when(personaRepo.findAll()).thenReturn(List.of(
                 new IspPersonaCodigo("11111111-1", 13, 6)));
         when(clienteTecRepo.findAll()).thenReturn(List.of(
-                new IspClienteTecnologia(2, "76458223-3", "TLD")));
+                new IspClienteTecnologia("Dosimet", "76458223-3", "TLD")));
 
         List<FilaInforme> filas = List.of(
                 // conocida (aporta la moda del cliente)
@@ -120,7 +120,7 @@ class AsignacionCodigosServiceTest {
                 fila(3, "CLINICA", "76458223-3", "99999999-9", "NUEVA", "Femenino",
                         "CUERPO COMPLETO/ PERSONAL", "A2", "PERSONAL", "TRIMESTRAL", "DND", "-", "-"));
 
-        ResultadoProceso res = service.procesar(2, "Dosimet", filas);
+        ResultadoProceso res = service.procesar("Dosimet", filas);
 
         assertEquals(2, res.dosis.size());
         FilaDosis nueva = res.dosis.stream().filter(x -> x.run.equals("99999999-9")).findFirst().orElseThrow();

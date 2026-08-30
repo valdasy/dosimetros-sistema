@@ -165,21 +165,23 @@ export const descargarPlantillaComparador = () =>
   client.get('/ejecutivo/comparador/plantilla', { responseType: 'blob' }).then((r) => r.data)
 
 // --- Informe ISP (Registro Nacional de Dosis) ---
+// Módulo autocontenido: las empresas (laboratorios) las provee el propio módulo.
+export const getEmpresasIsp = () => client.get('/isp/empresas').then((r) => r.data)
 export const getEstadoIsp = () => client.get('/isp/estado').then((r) => r.data)
-export const importarMaestraIsp = (file, empresaId) => {
+export const importarMaestraIsp = (file, empresa) => {
   const fd = new FormData()
   fd.append('file', file)
-  return client.post('/isp/maestra/importar', fd, { params: { empresaId } }).then((r) => r.data)
+  return client.post('/isp/maestra/importar', fd, { params: { empresa } }).then((r) => r.data)
 }
-export const analizarInformeIsp = (file, empresaId) => {
+export const analizarInformeIsp = (file, empresa) => {
   const fd = new FormData()
   fd.append('file', file)
-  return client.post('/isp/informe/analizar', fd, { params: { empresaId } }).then((r) => r.data)
+  return client.post('/isp/informe/analizar', fd, { params: { empresa } }).then((r) => r.data)
 }
-export const generarInformeIsp = (file, empresaId) => {
+export const generarInformeIsp = (file, empresa) => {
   const fd = new FormData()
   fd.append('file', file)
   return client
-    .post('/isp/informe/generar', fd, { params: { empresaId }, responseType: 'blob' })
+    .post('/isp/informe/generar', fd, { params: { empresa }, responseType: 'blob' })
     .then((r) => r.data)
 }

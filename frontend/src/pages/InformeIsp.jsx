@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  getEmpresas,
+  getEmpresasIsp,
   getEstadoIsp,
   importarMaestraIsp,
   analizarInformeIsp,
@@ -60,13 +60,13 @@ export default function InformeIsp() {
   const refrescarEstado = () => getEstadoIsp().then(setEstado).catch(() => {})
 
   useEffect(() => {
-    Promise.all([getEmpresas(), getEstadoIsp()])
+    Promise.all([getEmpresasIsp(), getEstadoIsp()])
       .then(([emps, est]) => {
         setEmpresas(emps)
         setEstado(est)
         if (emps.length) {
-          setEmpMaestra(String(emps[0].id))
-          setEmpInforme(String(emps[0].id))
+          setEmpMaestra(emps[0])
+          setEmpInforme(emps[0])
         }
       })
       .catch(() => toast.error('No se pudieron cargar los datos iniciales'))
@@ -78,7 +78,7 @@ export default function InformeIsp() {
     if (!fileMaestra) return toast.error('Selecciona el archivo del informe ISP entregado.')
     setImportando(true)
     try {
-      const res = await importarMaestraIsp(fileMaestra, Number(empMaestra))
+      const res = await importarMaestraIsp(fileMaestra, empMaestra)
       toast.success(`Maestra importada: ${res.personas} personas, ${res.clientes} clientes.`)
       await refrescarEstado()
     } catch (err) {
@@ -95,7 +95,7 @@ export default function InformeIsp() {
     if (!fileInforme) return setError('Selecciona el Informe de Dosis crudo.')
     setAnalizando(true)
     try {
-      const res = await analizarInformeIsp(fileInforme, Number(empInforme))
+      const res = await analizarInformeIsp(fileInforme, empInforme)
       setAnalisis(res)
     } catch (err) {
       setError(await mensajeError(err, 'No se pudo analizar el informe'))
@@ -108,9 +108,8 @@ export default function InformeIsp() {
     if (!fileInforme) return setError('Selecciona el Informe de Dosis crudo.')
     setGenerando(true)
     try {
-      const blob = await generarInformeIsp(fileInforme, Number(empInforme))
-      const emp = empresas.find((x) => String(x.id) === String(empInforme))
-      descargar(blob, `informe_isp_${emp ? emp.nombre.toLowerCase() : 'salida'}.xlsx`)
+      const blob = await generarInformeIsp(fileInforme, empInforme)
+      descargar(blob, `informe_isp_${empInforme ? empInforme.toLowerCase() : 'salida'}.xlsx`)
       toast.success('Excel del ISP generado y descargado.')
     } catch (err) {
       toast.error(await mensajeError(err, 'No se pudo generar el Excel'))
@@ -158,8 +157,8 @@ export default function InformeIsp() {
         <form onSubmit={importar} className="space-y-4">
           <Select label="Empresa" value={empMaestra} onChange={(e) => setEmpMaestra(e.target.value)}>
             {empresas.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.nombre}
+              <option key={emp} value={emp}>
+                {emp}
               </option>
             ))}
           </Select>
@@ -184,8 +183,8 @@ export default function InformeIsp() {
         <form onSubmit={analizar} className="space-y-4">
           <Select label="Empresa" value={empInforme} onChange={(e) => setEmpInforme(e.target.value)}>
             {empresas.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.nombre}
+              <option key={emp} value={emp}>
+                {emp}
               </option>
             ))}
           </Select>

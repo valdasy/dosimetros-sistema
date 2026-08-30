@@ -1,6 +1,5 @@
 package com.dosimetros.backend.informeisp.controller;
 
-import com.dosimetros.backend.entity.Empresa;
 import com.dosimetros.backend.informeisp.dto.AnalisisResponse;
 import com.dosimetros.backend.informeisp.dto.EstadoMaestraResponse;
 import com.dosimetros.backend.informeisp.model.FilaInforme;
@@ -10,8 +9,8 @@ import com.dosimetros.backend.informeisp.repository.IspPersonaCodigoRepository;
 import com.dosimetros.backend.informeisp.service.AsignacionCodigosService;
 import com.dosimetros.backend.informeisp.service.InformeReaderService;
 import com.dosimetros.backend.informeisp.service.IspExcelWriterService;
+import com.dosimetros.backend.informeisp.service.IspMappings;
 import com.dosimetros.backend.informeisp.service.MaestraImportService;
-import com.dosimetros.backend.repository.EmpresaRepository;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +27,10 @@ import java.util.Map;
 /**
  * Módulo Informe ISP (RND). Importa las maestras aprendidas y genera el Excel
  * dosimétrico trimestral para el ISP. Solo Administrador. Ver docs/INFORME_ISP.md.
+ *
+ * Módulo autocontenido: la empresa (laboratorio) es un dato propio del módulo
+ * —los dos laboratorios que emiten dosimetría— y no tiene relación con las
+ * tablas del resto del sistema.
  */
 @RestController
 @RequestMapping("/api/isp")
@@ -36,7 +39,9 @@ public class InformeIspController {
 
     private static final String XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-    private final EmpresaRepository empresaRepo;
+    /** Laboratorios que maneja el módulo ISP (dato propio, sin FK al sistema). */
+    private static final List<String> EMPRESAS = List.of("Dosimet", "Photomat");
+
     private final IspPersonaCodigoRepository personaRepo;
     private final IspClienteTecnologiaRepository clienteTecRepo;
     private final InformeReaderService informeReader;
@@ -44,20 +49,24 @@ public class InformeIspController {
     private final AsignacionCodigosService asignacion;
     private final IspExcelWriterService writer;
 
-    public InformeIspController(EmpresaRepository empresaRepo,
-                                IspPersonaCodigoRepository personaRepo,
+    public InformeIspController(IspPersonaCodigoRepository personaRepo,
                                 IspClienteTecnologiaRepository clienteTecRepo,
                                 InformeReaderService informeReader,
                                 MaestraImportService maestraImport,
                                 AsignacionCodigosService asignacion,
                                 IspExcelWriterService writer) {
-        this.empresaRepo = empresaRepo;
         this.personaRepo = personaRepo;
         this.clienteTecRepo = clienteTecRepo;
         this.informeReader = informeReader;
         this.maestraImport = maestraImport;
         this.asignacion = asignacion;
         this.writer = writer;
+    }
+
+    /** Laboratorios disponibles para el módulo (lista propia). */
+    @GetMapping("/empresas")
+    public ResponseEntity<List<String>> empresas() {
+        return ResponseEntity.ok(EMPRESAS);
     }
 
     /** Estado de las maestras cargadas. */
@@ -69,40 +78,40 @@ public class InformeIspController {
     /** Importa las maestras desde un informe ISP ya entregado (hoja DOSIS). */
     @PostMapping("/maestra/importar")
     public ResponseEntity<Map<String, Integer>> importarMaestra(
-            @RequestParam("empresaId") Integer empresaId,
+            @RequestParam("empresa") String empresa,
             @RequestParam("file") MultipartFile file) throws IOException {
 
         validarArchivo(file);
-        empresa(empresaId); // valida existencia
-        return ResponseEntity.ok(maestraImport.importar(file, empresaId));
+        String emp = validarEmpresa(empresa);
+        return ResponseEntity.ok(maestraImport.importar(file, emp));
     }
 
     /** Vista previa: procesa el informe crudo y devuelve resumen + inconsistencias. */
     @PostMapping("/informe/analizar")
     public ResponseEntity<AnalisisResponse> analizar(
-            @RequestParam("empresaId") Integer empresaId,
+            @RequestParam("empresa") String empresa,
             @RequestParam("file") MultipartFile file) throws IOException {
 
         validarArchivo(file);
-        Empresa e = empresa(empresaId);
+        String emp = validarEmpresa(empresa);
         List<FilaInforme> filas = informeReader.leer(file);
-        ResultadoProceso res = asignacion.procesar(empresaId, e.getNombre(), filas);
-        return ResponseEntity.ok(new AnalisisResponse(e.getNombre(), res.resumen(), res.inconsistencias));
+        ResultadoProceso res = asignacion.procesar(emp, filas);
+        return ResponseEntity.ok(new AnalisisResponse(emp, res.resumen(), res.inconsistencias));
     }
 
     /** Genera el Excel del ISP (TOES + DOSIS + REVISION). */
     @PostMapping("/informe/generar")
     public ResponseEntity<byte[]> generar(
-            @RequestParam("empresaId") Integer empresaId,
+            @RequestParam("empresa") String empresa,
             @RequestParam("file") MultipartFile file) throws IOException {
 
         validarArchivo(file);
-        Empresa e = empresa(empresaId);
+        String emp = validarEmpresa(empresa);
         List<FilaInforme> filas = informeReader.leer(file);
-        ResultadoProceso res = asignacion.procesar(empresaId, e.getNombre(), filas);
+        ResultadoProceso res = asignacion.procesar(emp, filas);
         byte[] excel = writer.escribir(res);
 
-        String filename = "informe_isp_" + e.getNombre().toLowerCase() + "_"
+        String filename = "informe_isp_" + emp.toLowerCase() + "_"
                 + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmm")) + ".xlsx";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
@@ -116,8 +125,12 @@ public class InformeIspController {
         }
     }
 
-    private Empresa empresa(Integer empresaId) {
-        return empresaRepo.findById(empresaId)
-                .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada: " + empresaId));
+    /** Valida contra la lista propia y devuelve el nombre canónico del laboratorio. */
+    private String validarEmpresa(String empresa) {
+        String norm = IspMappings.norm(empresa);
+        return EMPRESAS.stream()
+                .filter(e -> IspMappings.norm(e).equals(norm))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Empresa no válida: " + empresa));
     }
 }
