@@ -53,6 +53,7 @@ public class InformeReaderService {
                 f.documentoCliente = val(fmt, row, col, "documentocliente");
                 f.rut = val(fmt, row, col, "rut");
                 f.usuario = val(fmt, row, col, "usuario");
+                f.area = val(fmt, row, col, "area"); // informativo, opcional
                 f.genero = val(fmt, row, col, "genero");
                 f.tipoDosimetro = val(fmt, row, col, "tipodosimetro");
                 f.dosimetro = val(fmt, row, col, "dosimetro");
