@@ -54,7 +54,7 @@ Hoja única `Informe_dosis`, encabezados en la fila 1. Columnas:
 | **Rut** | **RUT de la persona** → filtro y clave de maestras |
 | Usuario | nombre de la persona (→ TOES) |
 | Genero | Masculino/Femenino → Sexo M/F |
-| Area | informativo |
+| Area | informativo → columna de **ayuda** en DOSIS (llenado manual) |
 | TipoDosimetro | AMBIENTAL · CUERPO COMPLETO/PERSONAL · DE CONTROL · DE REFERENCIA · EXTREMIDAD |
 | **Dosimetro** | código físico → filtro |
 | Reporte | informativo |
@@ -186,6 +186,13 @@ Encabezados en fila 5, datos desde fila 7.
 | Q | Dosis [mSv] | valor a 2 decimales; `0.00` si hay sigla |
 | S | CANT | siempre `1` |
 | U | OBSERVA | mapeo §7 |
+| X | CLIENTE *(ayuda)* | `Cliente` — **no oficial**, para el llenado manual |
+| Y | AREA *(ayuda)* | `Area` — **no oficial**, para el llenado manual |
+
+> Las columnas **X (CLIENTE)** e **Y (AREA)** son un **bloque de ayuda** a la derecha
+> del formato oficial (encabezado "AYUDA · borrar antes de enviar al ISP"). Sirven para
+> ubicar rápido a quién pertenece cada fila al completar a mano los `COD PRAC / COD CARGO`
+> en blanco. **Si el importador del ISP es estricto, elimínalas antes de enviar.**
 
 ### Hoja `REVISION`
 Las inconsistencias de la Etapa 1 (§3), una por fila, con motivo.

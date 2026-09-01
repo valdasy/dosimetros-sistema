@@ -152,6 +152,7 @@ public class AsignacionCodigosService {
 
             FilaDosis fd = new FilaDosis();
             fd.cliente = f.cliente;
+            fd.area = f.area;
             fd.run = f.rut;
             fd.codServ = codServ;
             fd.rutEntidad = f.documentoCliente;

@@ -5,7 +5,8 @@ package com.dosimetros.backend.informeisp.model;
  */
 public class FilaDosis {
 
-    public String cliente;      // solo para ordenar la salida
+    public String cliente;      // ordenar la salida + columna de ayuda en DOSIS
+    public String area;         // columna de ayuda en DOSIS (llenado manual)
     public String run;          // RUT persona
     public Integer codServ;
     public String rutEntidad;

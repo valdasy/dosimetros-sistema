@@ -11,6 +11,7 @@ public class FilaInforme {
     public String documentoCliente; // RUT de la entidad
     public String rut;              // RUT de la persona
     public String usuario;
+    public String area;             // informativo (ayuda para llenado manual)
     public String genero;
     public String tipoDosimetro;
     public String dosimetro;
