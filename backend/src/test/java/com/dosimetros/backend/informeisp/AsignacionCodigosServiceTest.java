@@ -105,7 +105,7 @@ class AsignacionCodigosServiceTest {
     }
 
     @Test
-    void personaSinMatchQuedaEnBlanco() {
+    void personaSinMatchSeSugierePorCompaneros() {
         when(codServRepo.findAll()).thenReturn(List.of(serv("Dosimet", "TLD", "HP10", "TRIMESTRAL", 3)));
         when(personaRepo.findAll()).thenReturn(List.of(
                 new IspPersonaCodigo("Dosimet", "11111111-1", 13, 6)));
@@ -113,10 +113,10 @@ class AsignacionCodigosServiceTest {
                 new IspClienteTecnologia("Dosimet", "76458223-3", "TLD")));
 
         List<FilaInforme> filas = List.of(
-                // conocida: match por (empresa + RUT)
+                // conocida: match por (empresa + RUT) -> aporta la referencia
                 fila(2, "CLINICA", "76458223-3", "11111111-1", "JUAN", "Masculino",
                         "CUERPO COMPLETO/ PERSONAL", "A1", "PERSONAL", "TRIMESTRAL", "0.1", "-", "-"),
-                // sin match: no está en la maestra de la empresa
+                // sin match, mismo cliente+área -> se sugiere por el compañero
                 fila(3, "CLINICA", "76458223-3", "99999999-9", "NUEVA", "Femenino",
                         "CUERPO COMPLETO/ PERSONAL", "A2", "PERSONAL", "TRIMESTRAL", "DND", "-", "-"));
 
@@ -126,11 +126,40 @@ class AsignacionCodigosServiceTest {
         FilaDosis conocida = res.dosis.stream().filter(x -> x.run.equals("11111111-1")).findFirst().orElseThrow();
         assertEquals(13, conocida.codCargo);
         assertEquals(6, conocida.codPrac);
+        assertFalse(conocida.cargoSugerido);
+        assertFalse(conocida.pracSugerido);
 
         FilaDosis nueva = res.dosis.stream().filter(x -> x.run.equals("99999999-9")).findFirst().orElseThrow();
-        assertNull(nueva.codCargo); // sin match -> en blanco
-        assertNull(nueva.codPrac);
+        assertEquals(13, nueva.codCargo); // sugerido por compañero del mismo cliente+área
+        assertEquals(6, nueva.codPrac);
+        assertTrue(nueva.cargoSugerido);
+        assertTrue(nueva.pracSugerido);
         assertEquals("NR", nueva.observa); // DND -> NR
+        assertTrue(res.inconsistencias.stream().anyMatch(i -> i.tipo.equals("PERSONA_CODIGO_SUGERIDO")));
+    }
+
+    @Test
+    void sinCompanerosEnLaMismaAreaQuedaEnBlanco() {
+        when(codServRepo.findAll()).thenReturn(List.of(serv("Dosimet", "TLD", "HP10", "TRIMESTRAL", 3)));
+        when(personaRepo.findAll()).thenReturn(List.of(
+                new IspPersonaCodigo("Dosimet", "11111111-1", 13, 6)));
+        when(clienteTecRepo.findAll()).thenReturn(List.of());
+
+        // Conocida y nueva son del mismo cliente pero de ÁREAS distintas.
+        FilaInforme conocida = fila(2, "CLINICA", "76458223-3", "11111111-1", "JUAN", "Masculino",
+                "CUERPO COMPLETO/ PERSONAL", "A1", "PERSONAL", "TRIMESTRAL", "0.1", "-", "-");
+        conocida.area = "RAYOS";
+        FilaInforme nueva = fila(3, "CLINICA", "76458223-3", "99999999-9", "ANA", "Femenino",
+                "CUERPO COMPLETO/ PERSONAL", "A2", "PERSONAL", "TRIMESTRAL", "0.2", "-", "-");
+        nueva.area = "PABELLON"; // área distinta -> sin compañeros de referencia
+
+        ResultadoProceso res = service.procesar("Dosimet", List.of(conocida, nueva));
+
+        FilaDosis fd = res.dosis.stream().filter(x -> x.run.equals("99999999-9")).findFirst().orElseThrow();
+        assertNull(fd.codCargo);
+        assertNull(fd.codPrac);
+        assertFalse(fd.cargoSugerido);
+        assertFalse(fd.pracSugerido);
         assertTrue(res.inconsistencias.stream().anyMatch(i -> i.tipo.equals("PERSONA_SIN_CARGO_PRAC")));
     }
 

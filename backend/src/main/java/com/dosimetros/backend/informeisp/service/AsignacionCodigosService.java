@@ -63,6 +63,19 @@ public class AsignacionCodigosService {
         }
         String tecDefault = DEFAULT_TEC.getOrDefault(empresaNorm, "TLD");
 
+        // --- Referencia de compañeros: moda de cargo/práctica por (entidad+área),
+        // contando SOLO personas con código confirmado por la maestra (nunca
+        // sugerencia sobre sugerencia). Sirve para rellenar a los sin match. ---
+        Map<String, Map<Integer, Integer>> refCargo = new HashMap<>();
+        Map<String, Map<Integer, Integer>> refPrac = new HashMap<>();
+        for (FilaInforme f : filas) {
+            IspPersonaCodigo p = personaMap.get(IspMappings.norm(f.rut));
+            if (p == null) continue;
+            String key = entArea(f.documentoCliente, f.area);
+            if (p.getCodCargo() != null) contar(refCargo, key, p.getCodCargo());
+            if (p.getCodPrac() != null) contar(refPrac, key, p.getCodPrac());
+        }
+
         // --- Procesamiento fila a fila ---
         Map<String, PersonaToes> personas = new LinkedHashMap<>();
         Set<String> clientesSinTec = new HashSet<>();
@@ -129,20 +142,39 @@ public class AsignacionCodigosService {
                         "No hay Código de Servicio para " + tec + " / " + magnitud + " / " + periodo + "."));
             }
 
-            // COD PRAC / COD CARGO: match por (empresa + RUT) contra la maestra
-            // del trimestre anterior. Sin match -> quedan en blanco y se listan
-            // en REVISION para completarlos a mano.
+            // COD PRAC / COD CARGO: 1) match por (empresa + RUT) contra la maestra
+            // del trimestre anterior; 2) si no hay match, se SUGIERE por la moda de
+            // los compañeros del mismo cliente+área (marcado para verificar);
+            // 3) si tampoco hay referencia, queda en blanco.
             Integer codCargo = null;
             Integer codPrac = null;
+            boolean cargoSugerido = false;
+            boolean pracSugerido = false;
             IspPersonaCodigo persona = personaMap.get(rut);
             if (persona != null) {
                 codCargo = persona.getCodCargo();
                 codPrac = persona.getCodPrac();
             } else {
-                res.inconsistencias.add(new Inconsistencia(f.filaExcel, f.rut, f.usuario, f.cliente,
-                        "PERSONA_SIN_CARGO_PRAC",
-                        "RUT no está en la maestra de " + empresa + " (trimestre anterior). "
-                                + "COD CARGO y COD PRAC quedan en blanco para completar manualmente."));
+                String key = entArea(f.documentoCliente, f.area);
+                Integer sugCargo = moda(refCargo.get(key));
+                Integer sugPrac = moda(refPrac.get(key));
+                codCargo = sugCargo;
+                codPrac = sugPrac;
+                cargoSugerido = sugCargo != null;
+                pracSugerido = sugPrac != null;
+                if (sugCargo != null || sugPrac != null) {
+                    res.inconsistencias.add(new Inconsistencia(f.filaExcel, f.rut, f.usuario, f.cliente,
+                            "PERSONA_CODIGO_SUGERIDO",
+                            "RUT no está en la maestra. Sugerido por compañeros de '" + f.cliente
+                                    + "' / área '" + (f.area == null ? "" : f.area) + "': cargo="
+                                    + (sugCargo == null ? "—" : sugCargo) + ", práctica="
+                                    + (sugPrac == null ? "—" : sugPrac) + ". Verificar."));
+                } else {
+                    res.inconsistencias.add(new Inconsistencia(f.filaExcel, f.rut, f.usuario, f.cliente,
+                            "PERSONA_SIN_CARGO_PRAC",
+                            "RUT no está en la maestra de " + empresa + " y no hay compañeros de "
+                                    + "referencia en su cliente+área. COD CARGO y COD PRAC en blanco."));
+                }
             }
 
             // Dosis + OBSERVA
@@ -158,6 +190,8 @@ public class AsignacionCodigosService {
             fd.rutEntidad = f.documentoCliente;
             fd.codPrac = codPrac;
             fd.codCargo = codCargo;
+            fd.cargoSugerido = cargoSugerido;
+            fd.pracSugerido = pracSugerido;
             fd.fechaInicio = f.fechaInicio;
             fd.fechaFin = f.fechaFin;
             fd.dosis = d.dosis;
@@ -181,5 +215,23 @@ public class AsignacionCodigosService {
 
     private static String claveServ(String tec, String magnitud, String periodo) {
         return tec + "|" + magnitud + "|" + periodo;
+    }
+
+    /** Clave de agrupación de compañeros: entidad (RUT) + área. */
+    private static String entArea(String documentoCliente, String area) {
+        return IspMappings.norm(documentoCliente) + "|" + IspMappings.norm(area);
+    }
+
+    private static void contar(Map<String, Map<Integer, Integer>> map, String key, Integer val) {
+        map.computeIfAbsent(key, k -> new HashMap<>()).merge(val, 1, Integer::sum);
+    }
+
+    /** Valor más frecuente (moda); null si no hay datos. */
+    private static Integer moda(Map<Integer, Integer> counter) {
+        if (counter == null || counter.isEmpty()) return null;
+        return counter.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
     }
 }

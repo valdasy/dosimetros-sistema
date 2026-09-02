@@ -126,14 +126,28 @@ public class IspExcelWriterService {
         t.createCell(16).setCellValue("FLOAT");
         t.createCell(18).setCellValue("ENTERO");
 
+        // Estilo para códigos SUGERIDOS por compañeros (no confirmados por maestra):
+        // fondo ámbar para que salten a la vista y se verifiquen antes de enviar.
+        CellStyle sugerido = wb.createCellStyle();
+        sugerido.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        sugerido.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
         int r = 7;
         for (FilaDosis d : res.dosis) {
             Row row = s.createRow(r++);
             row.createCell(2).setCellValue(nz(d.run));
             if (d.codServ != null) row.createCell(4).setCellValue(d.codServ);
             row.createCell(6).setCellValue(nz(d.rutEntidad));
-            if (d.codPrac != null) row.createCell(8).setCellValue(d.codPrac);
-            if (d.codCargo != null) row.createCell(10).setCellValue(d.codCargo);
+            if (d.codPrac != null) {
+                Cell c = row.createCell(8);
+                c.setCellValue(d.codPrac);
+                if (d.pracSugerido) c.setCellStyle(sugerido);
+            }
+            if (d.codCargo != null) {
+                Cell c = row.createCell(10);
+                c.setCellValue(d.codCargo);
+                if (d.cargoSugerido) c.setCellStyle(sugerido);
+            }
             row.createCell(12).setCellValue(nz(d.fechaInicio));
             row.createCell(14).setCellValue(nz(d.fechaFin));
             Cell dosisCell = row.createCell(16);

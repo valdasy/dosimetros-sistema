@@ -184,8 +184,9 @@ export default function InformeIsp() {
           La <b>tecnología</b> se toma de la columna <code>Tecnologia</code> del informe si
           viene (TLD/OSL/FILM); si no, de la maestra o el default del laboratorio.
           <b> COD CARGO</b> y <b>COD PRAC</b> se completan por <b>empresa + RUT</b> desde la
-          maestra del trimestre anterior; los que no calcen quedan <b>en blanco</b> y se
-          listan en la hoja <b>REVISION</b> para llenarlos a mano.
+          maestra del trimestre anterior. Si un RUT no calza, se <b>sugiere</b> por la moda de
+          los compañeros del mismo <b>cliente + área</b> (celda <b>pintada</b>, a verificar); si
+          no hay referencia, queda <b>en blanco</b>. Todo se lista en la hoja <b>REVISION</b>.
         </p>
         <form onSubmit={analizar} className="space-y-4">
           <Select label="Empresa" value={empInforme} onChange={(e) => setEmpInforme(e.target.value)}>

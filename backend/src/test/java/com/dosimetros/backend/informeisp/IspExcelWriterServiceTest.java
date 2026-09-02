@@ -48,4 +48,30 @@ class IspExcelWriterServiceTest {
             assertEquals("3", fmt.formatCellValue(fila.getCell(4)));
         }
     }
+
+    @Test
+    void codigoSugeridoSePintaEnDosis() throws Exception {
+        ResultadoProceso res = new ResultadoProceso();
+        res.empresa = "Dosimet";
+        FilaDosis d = new FilaDosis();
+        d.run = "22222222-2";
+        d.codPrac = 4;
+        d.codCargo = 3;
+        d.pracSugerido = true;   // sugerido -> celda pintada
+        d.cargoSugerido = false; // confirmado -> sin pintar
+        d.dosis = 0.0;
+        res.dosis.add(d);
+
+        byte[] bytes = writer.escribir(res);
+
+        try (Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
+            Sheet dosis = wb.getSheet("DOSIS");
+            Row fila = dosis.getRow(7);
+            short amarillo = IndexedColors.LIGHT_YELLOW.getIndex();
+            assertEquals(amarillo, fila.getCell(8).getCellStyle().getFillForegroundColor(),
+                    "COD PRAC sugerido debe ir pintado");
+            assertNotEquals(amarillo, fila.getCell(10).getCellStyle().getFillForegroundColor(),
+                    "COD CARGO confirmado no debe ir pintado");
+        }
+    }
 }
