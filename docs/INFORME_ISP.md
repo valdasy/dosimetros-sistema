@@ -27,8 +27,8 @@ Informe de Dosis crudo (Dosimet | Photomat)
         │
    [2/3] asignación de códigos
         │   • COD SERV  ← regla (empresa × tecnología × magnitud × periodicidad)
-        │   • COD PRAC  ← maestra por (empresa + RUT); sin match → en blanco + REVISION
-        │   • COD CARGO ← maestra por (empresa + RUT); sin match → en blanco + REVISION
+        │   • COD PRAC  ← maestra (empresa+RUT); sin match → sugerido por compañeros (cliente+área) o en blanco
+        │   • COD CARGO ← maestra (empresa+RUT); sin match → sugerido por compañeros (cliente+área) o en blanco
         │   • OBSERVA + Dosis ← mapeo de siglas / 2 decimales
         │
    [4] Excel ISP (TOES + DOSIS + REVISION)
@@ -150,9 +150,16 @@ del informe ISP del **trimestre anterior** (Q1→Q2, Q2→Q3, …). El match usa
 **laboratorio** procesado **más el RUT** de la persona.
 
 - **Persona con match (empresa + RUT)** → se asignan sus `cod_cargo` / `cod_prac`.
-- **Sin match** → `COD CARGO` y `COD PRAC` quedan **en blanco** en la hoja DOSIS y la
-  persona se lista en `REVISION` (tipo `PERSONA_SIN_CARGO_PRAC`) para completarla a mano.
-  Ese informe completado alimenta la maestra del trimestre siguiente.
+- **Sin match → sugerencia por compañeros:** se toma la **moda** de `cod_cargo` y
+  `cod_prac` de los **compañeros del mismo cliente + área** que **sí** tienen código
+  confirmado por la maestra (nunca sugerencia sobre sugerencia). El valor sugerido:
+  - se escribe en DOSIS con la **celda pintada** (fondo ámbar) para que se verifique;
+  - la persona se lista en `REVISION` (tipo `PERSONA_CODIGO_SUGERIDO`) con el detalle.
+- **Sin match y sin compañeros de referencia** → `COD CARGO` / `COD PRAC` quedan **en
+  blanco** y la persona se lista en `REVISION` (tipo `PERSONA_SIN_CARGO_PRAC`).
+
+En todos los casos, el informe completado y verificado alimenta la maestra del
+trimestre siguiente. **Verifica siempre las celdas pintadas antes de enviar al ISP.**
 
 ---
 

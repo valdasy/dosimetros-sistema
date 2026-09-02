@@ -16,4 +16,9 @@ public class FilaDosis {
     public String fechaFin;
     public Double dosis;        // null si va vacío
     public String observa;      // NR | NU | DD | <LD | null
+
+    // Marca que el código fue SUGERIDO por compañeros del mismo cliente+área
+    // (no confirmado por la maestra). El escritor pinta esas celdas.
+    public boolean cargoSugerido;
+    public boolean pracSugerido;
 }
