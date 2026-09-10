@@ -1,0 +1,32 @@
+<html><head><meta charset="utf-8"></head><body>
+<table border="1">
+<tr><td colspan="10">Búsqueda por Múltiples Criterios</td></tr>
+<tr><td>Número de Cuenta (TCC) :</td><td>18584011</td><td>&nbsp;</td><td>Número de Referencia :</td><td>&nbsp;</td></tr>
+<tr><td>Estado :</td><td>&nbsp;</td><td>&nbsp;</td><td>Destinatario :</td><td>&nbsp;</td></tr>
+<tr><td>Fecha Desde :</td><td>01-08-2026</td><td>&nbsp;</td><td>Fecha Hasta :</td><td>31-08-2026</td></tr>
+<tr><td colspan="10">Resultados de la Búsqueda: 2 Coincidencias.</td></tr>
+<tr>
+<td>Nro. OT</td><td>OT Padre</td><td>Nro. Referencia</td><td>Producto</td><td>Tipo Pieza</td>
+<td>Tiempo de entrega o servicio</td><td>Cobertura Extendida</td><td>Contenido Declarado</td>
+<td>Valor Declarado Producto</td><td>Estado</td><td>Nombre Destinatario</td><td>Destino</td>
+<td>Dirección del Destinatario</td><td>Oficina Origen</td><td>Oficina Destino</td>
+<td>Tipo Admisión</td><td>Tipo Entrega</td><td>Receptor</td><td>Rut Receptor</td>
+<td>Fecha Primer Intento - Entrega</td><td>Fecha Entrega</td><td>Hora Entrega</td><td>Certificado de Entrega</td>
+</tr>
+<tr>
+<td>111111111111</td><td></td><td>CLIENTE UNO</td><td>ENCOMIENDA</td><td>PIEZA</td>
+<td>EXPRESS</td><td>SI</td><td>0</td><td>100000</td><td>ENTREGADO</td>
+<td>HOSPITAL UNO</td><td>ARICA</td><td>CALLE FALSA 1</td><td>HUB LAS CONDES</td><td></td>
+<td>ADMISION OFICINA</td><td>DOMICILIO</td><td>Juan Perez</td><td>11111111</td>
+<td>05/08/2026</td><td>05/08/2026</td><td>10:30</td>
+<td><a href="https://portalempresa.chilexpress.cl/Download/cert1">Ver</a></td>
+</tr>
+<tr>
+<td>222222222222</td><td></td><td>CLIENTE DOS</td><td>ENCOMIENDA</td><td>PIEZA</td>
+<td>EXPRESS</td><td>SI</td><td>0</td><td>120000</td><td>EN PRE-RECEPCION</td>
+<td>CLINICA DOS</td><td>CALAMA</td><td>AV SIEMPRE VIVA 2</td><td>LA DEHESA</td><td></td>
+<td>RETIRO</td><td>OFICINA</td><td></td><td>0</td>
+<td></td><td></td><td></td><td></td>
+</tr>
+</table>
+</body></html>

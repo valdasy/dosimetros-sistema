@@ -185,3 +185,14 @@ export const generarInformeIsp = (file, empresa) => {
     .post('/isp/informe/generar', fd, { params: { empresa }, responseType: 'blob' })
     .then((r) => r.data)
 }
+
+// --- Seguimiento Chilexpress (módulo autocontenido) ---
+export const getEmpresasChilexpress = () =>
+  client.get('/chilexpress/empresas').then((r) => r.data)
+export const importarChilexpress = (file, empresa) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return client.post('/chilexpress/importar', fd, { params: { empresa } }).then((r) => r.data)
+}
+export const buscarChilexpress = (params) =>
+  client.get('/chilexpress/buscar', { params }).then((r) => r.data)
