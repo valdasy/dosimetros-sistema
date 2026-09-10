@@ -13,8 +13,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Módulo Seguimiento Chilexpress. Autocontenido (sin relación con el resto del
@@ -57,11 +59,21 @@ public class ChilexpressController {
     @GetMapping("/panel")
     @PreAuthorize("hasAnyRole('ADMIN', 'EJECUTIVO')")
     public ResponseEntity<PanelChilexpressResponse> panel() {
-        List<OtChilexpressResponse> retiro = repo.retiroEnSucursal().stream()
-                .map(OtChilexpressResponse::new).toList();
-        List<OtChilexpressResponse> revision = repo.conProblema().stream()
-                .map(OtChilexpressResponse::new).toList();
-        return ResponseEntity.ok(new PanelChilexpressResponse(retiro, revision));
+        List<ChilexpressOt> retiro = repo.retiroEnSucursal();
+        List<ChilexpressOt> revision = repo.conProblema();
+
+        // Pendientes de entrega: sin fecha de entrega y que NO estén ya en
+        // sucursal ni con problema (listas mutuamente excluyentes).
+        Set<Integer> yaListadas = new HashSet<>();
+        retiro.forEach(o -> yaListadas.add(o.getId()));
+        revision.forEach(o -> yaListadas.add(o.getId()));
+        List<ChilexpressOt> pendientes = repo.findByFechaEntregaIsNullOrderByActualizadoEnDesc()
+                .stream().filter(o -> !yaListadas.contains(o.getId())).toList();
+
+        return ResponseEntity.ok(new PanelChilexpressResponse(
+                retiro.stream().map(OtChilexpressResponse::new).toList(),
+                revision.stream().map(OtChilexpressResponse::new).toList(),
+                pendientes.stream().map(OtChilexpressResponse::new).toList()));
     }
 
     /** Búsqueda por texto (destinatario/referencia/OT) y rango de fecha. */

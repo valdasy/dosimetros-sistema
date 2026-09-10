@@ -29,6 +29,10 @@ public interface ChilexpressOtRepository extends JpaRepository<ChilexpressOt, In
             + "ORDER BY o.actualizadoEn DESC")
     List<ChilexpressOt> conProblema();
 
+    /** Panel: OT aún sin entregar (sin fecha de entrega). En el controlador se
+     *  excluyen las que ya están en sucursal o con problema. */
+    List<ChilexpressOt> findByFechaEntregaIsNullOrderByActualizadoEnDesc();
+
     /** Búsqueda por texto (destinatario / referencia / OT) y rango sobre Fecha Entrega. */
     @Query("SELECT o FROM ChilexpressOt o WHERE "
             + "(:empresa IS NULL OR o.empresa = :empresa) AND "
