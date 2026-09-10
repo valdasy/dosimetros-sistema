@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { to: '/tipos-porta', label: 'Tipos de porta', icon: IconStock, roles: ['ADMIN', 'OPERADOR'] },
   { to: '/importar', label: 'Importar Excel', icon: IconUpload, roles: ['ADMIN'] },
   { to: '/informe-isp', label: 'Informe ISP', icon: IconUpload, roles: ['ADMIN'] },
+  { to: '/seguimiento', label: 'Seguimiento Chilexpress', icon: IconSearch, roles: ['ADMIN', 'EJECUTIVO'] },
   { to: '/usuarios-ejecutivos', label: 'Usuarios y ejecutivos', icon: IconUser, roles: ['ADMIN', 'OPERADOR'] },
   { to: '/mis-dosimetros', label: 'Mis dosímetros', icon: IconBox, roles: ['EJECUTIVO'] },
   { to: '/mis-clientes', label: 'Mis clientes', icon: IconClients, roles: ['EJECUTIVO'] },

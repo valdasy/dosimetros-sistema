@@ -8,7 +8,7 @@
   <img alt="Frontend" src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?logo=react&logoColor=black">
   <img alt="Java" src="https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white">
   <img alt="DB" src="https://img.shields.io/badge/DB-MySQL%208-4479A1?logo=mysql&logoColor=white">
-  <img alt="Tests" src="https://img.shields.io/badge/Tests-48%20passing-brightgreen">
+  <img alt="Tests" src="https://img.shields.io/badge/Tests-57%20passing-brightgreen">
 </p>
 
 ---
@@ -151,6 +151,7 @@ Solo consulta lo suyo, sin poder modificar el inventario:
 | **Tipos de porta** | Catálogo de portas por tipo de dosímetro. | Admin · Operador |
 | **Importar Excel** | Carga masiva inicial de dosímetros. | Administrador |
 | **Informe ISP** | Genera el informe dosimétrico trimestral para el ISP (RND): asigna códigos y produce el Excel oficial. | Administrador |
+| **Seguimiento Chilexpress** | Registra y actualiza las Órdenes de Transporte desde el export de Chilexpress; búsqueda por cliente y rango de fecha. Módulo autocontenido. | Admin (carga) · Admin/Ejecutivo (consulta) |
 | **Usuarios y ejecutivos** | Módulo unificado: cuentas de acceso (login + rol) y comerciales. | Admin (usuarios) · Operador (ejecutivos) |
 | **Mis dosímetros** | Consulta filtrable del ejecutivo, con lotes por fecha y export. | Ejecutivo |
 | **Mis clientes** | Clientes del ejecutivo, con buscador y pendientes. | Ejecutivo |
