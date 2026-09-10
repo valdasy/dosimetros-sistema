@@ -167,20 +167,35 @@ export default function Seguimiento() {
         <Card
           title="Casos a revisar"
           action={
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Badge color={panel.revision.length ? 'red' : 'slate'}>
+                {panel.revision.length} con problema
+              </Badge>
               <Badge color={panel.retiroSucursal.length ? 'blue' : 'slate'}>
                 {panel.retiroSucursal.length} en sucursal
               </Badge>
-              <Badge color={panel.revision.length ? 'red' : 'slate'}>
-                {panel.revision.length} con problema
+              <Badge color={panel.pendientes.length ? 'amber' : 'slate'}>
+                {panel.pendientes.length} por entregar
               </Badge>
             </div>
           }
         >
-          {panel.retiroSucursal.length === 0 && panel.revision.length === 0 ? (
-            <Alert type="success">Nada pendiente: sin encomiendas en sucursal ni con problemas. ✅</Alert>
+          {panel.revision.length === 0 &&
+          panel.retiroSucursal.length === 0 &&
+          panel.pendientes.length === 0 ? (
+            <Alert type="success">Nada pendiente: sin encomiendas por entregar, en sucursal ni con problemas. ✅</Alert>
           ) : (
             <div className="space-y-5">
+              <div>
+                <h3 className="text-sm font-semibold text-ink mb-1.5">
+                  ⚠️ Con problema (devolución / extraviada / dañada / rechazo) ({panel.revision.length})
+                </h3>
+                {panel.revision.length ? (
+                  <TablaOts rows={panel.revision} />
+                ) : (
+                  <p className="text-sm text-slate-500">Ninguna.</p>
+                )}
+              </div>
               <div>
                 <h3 className="text-sm font-semibold text-ink mb-1.5">
                   📦 Disponibles para retiro en sucursal ({panel.retiroSucursal.length})
@@ -193,10 +208,10 @@ export default function Seguimiento() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-ink mb-1.5">
-                  ⚠️ Con problema (devolución / extraviada / dañada / rechazo) ({panel.revision.length})
+                  ⏳ Pendientes de entrega ({panel.pendientes.length})
                 </h3>
-                {panel.revision.length ? (
-                  <TablaOts rows={panel.revision} />
+                {panel.pendientes.length ? (
+                  <TablaOts rows={panel.pendientes} />
                 ) : (
                   <p className="text-sm text-slate-500">Ninguna.</p>
                 )}
