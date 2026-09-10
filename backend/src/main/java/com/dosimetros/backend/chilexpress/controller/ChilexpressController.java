@@ -74,7 +74,8 @@ public class ChilexpressController {
         List<ChilexpressOt> pendientes = repo.findByFechaEntregaIsNullOrderByActualizadoEnDesc()
                 .stream()
                 .filter(o -> !yaListadas.contains(o.getId()))
-                .filter(o -> !entregado(o.getEstado())) // por si "EN DESCARGO" llega sin fecha
+                .filter(o -> !entregado(o.getEstado()))       // por si "EN DESCARGO" llega sin fecha
+                .filter(o -> !creadaNoRecibida(o.getEstado())) // "EN PRE-RECEPCION": aún no se envía
                 .toList();
 
         return ResponseEntity.ok(new PanelChilexpressResponse(
@@ -129,6 +130,12 @@ public class ChilexpressController {
     private static boolean entregado(String estado) {
         String e = estado == null ? "" : estado.toLowerCase();
         return e.contains("descargo") || e.contains("entreg");
+    }
+
+    /** ¿La OT solo fue creada y aún no la recibió Chilexpress? ("EN PRE-RECEPCION"). */
+    private static boolean creadaNoRecibida(String estado) {
+        String e = estado == null ? "" : estado.toLowerCase();
+        return e.contains("pre") && e.contains("recepcion");
     }
 
     private String validarEmpresa(String empresa) {
