@@ -1,6 +1,7 @@
 package com.dosimetros.backend.chilexpress.controller;
 
 import com.dosimetros.backend.chilexpress.dto.OtChilexpressResponse;
+import com.dosimetros.backend.chilexpress.dto.PanelChilexpressResponse;
 import com.dosimetros.backend.chilexpress.entity.ChilexpressOt;
 import com.dosimetros.backend.chilexpress.repository.ChilexpressOtRepository;
 import com.dosimetros.backend.chilexpress.service.ChilexpressImportService;
@@ -50,6 +51,17 @@ public class ChilexpressController {
             throw new IllegalArgumentException("Falta el archivo.");
         }
         return ResponseEntity.ok(importService.importar(validarEmpresa(empresa), file));
+    }
+
+    /** Panel de alertas: OT en sucursal para retiro y OT con problema (siempre visible). */
+    @GetMapping("/panel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EJECUTIVO')")
+    public ResponseEntity<PanelChilexpressResponse> panel() {
+        List<OtChilexpressResponse> retiro = repo.retiroEnSucursal().stream()
+                .map(OtChilexpressResponse::new).toList();
+        List<OtChilexpressResponse> revision = repo.conProblema().stream()
+                .map(OtChilexpressResponse::new).toList();
+        return ResponseEntity.ok(new PanelChilexpressResponse(retiro, revision));
     }
 
     /** Búsqueda por texto (destinatario/referencia/OT) y rango de fecha. */

@@ -13,6 +13,22 @@ public interface ChilexpressOtRepository extends JpaRepository<ChilexpressOt, In
     /** Registros de un mismo (empresa, Nro. OT), del más reciente al más antiguo. */
     List<ChilexpressOt> findByEmpresaAndNroOtOrderByCreadoEnDesc(String empresa, String nroOt);
 
+    /** Panel: OT disponibles para retiro en sucursal (por palabra clave en el estado). */
+    @Query("SELECT o FROM ChilexpressOt o WHERE "
+            + "LOWER(o.estado) LIKE '%sucursal%' OR LOWER(o.estado) LIKE '%retiro%' "
+            + "ORDER BY o.actualizadoEn DESC")
+    List<ChilexpressOt> retiroEnSucursal();
+
+    /** Panel: OT con problema (devolución, extraviada, dañada, siniestro, rechazo…). */
+    @Query("SELECT o FROM ChilexpressOt o WHERE "
+            + "LOWER(o.estado) LIKE '%devuel%' OR LOWER(o.estado) LIKE '%devol%' OR "
+            + "LOWER(o.estado) LIKE '%extrav%' OR LOWER(o.estado) LIKE '%perdid%' OR "
+            + "LOWER(o.estado) LIKE '%da_ad%' OR LOWER(o.estado) LIKE '%siniest%' OR "
+            + "LOWER(o.estado) LIKE '%rechaz%' OR LOWER(o.estado) LIKE '%incidenc%' OR "
+            + "LOWER(o.estado) LIKE '%no entreg%' "
+            + "ORDER BY o.actualizadoEn DESC")
+    List<ChilexpressOt> conProblema();
+
     /** Búsqueda por texto (destinatario / referencia / OT) y rango sobre Fecha Entrega. */
     @Query("SELECT o FROM ChilexpressOt o WHERE "
             + "(:empresa IS NULL OR o.empresa = :empresa) AND "

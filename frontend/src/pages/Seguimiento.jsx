@@ -3,6 +3,7 @@ import {
   getEmpresasChilexpress,
   importarChilexpress,
   buscarChilexpress,
+  getPanelChilexpress,
 } from '../api/endpoints'
 import { Card, Button, Input, Select, Alert, Badge, Loading, EmptyState } from '../components/ui'
 import { useToast } from '../components/Toast'
@@ -30,12 +31,62 @@ function colorEstado(estado) {
   return 'slate'
 }
 
+function TablaOts({ rows }) {
+  return (
+    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+      <table className="min-w-full text-sm">
+        <thead className="bg-slate-50 text-ink/70">
+          <tr>
+            <th className="text-left px-3 py-2 font-semibold">Nro. OT</th>
+            <th className="text-left px-3 py-2 font-semibold">Empresa</th>
+            <th className="text-left px-3 py-2 font-semibold">Estado</th>
+            <th className="text-left px-3 py-2 font-semibold">Destinatario</th>
+            <th className="text-left px-3 py-2 font-semibold">Referencia</th>
+            <th className="text-left px-3 py-2 font-semibold">Destino</th>
+            <th className="text-left px-3 py-2 font-semibold">Fecha entrega</th>
+            <th className="text-left px-3 py-2 font-semibold">Receptor</th>
+            <th className="text-left px-3 py-2 font-semibold">Cert.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((o) => (
+            <tr key={o.id} className="border-t border-slate-100">
+              <td className="px-3 py-2 font-mono text-xs">{o.nroOt}</td>
+              <td className="px-3 py-2">{o.empresa}</td>
+              <td className="px-3 py-2">
+                <Badge color={colorEstado(o.estado)}>{o.estado || '—'}</Badge>
+              </td>
+              <td className="px-3 py-2">{o.nombreDestinatario || '—'}</td>
+              <td className="px-3 py-2">{o.nroReferencia || '—'}</td>
+              <td className="px-3 py-2">{o.destino || '—'}</td>
+              <td className="px-3 py-2 whitespace-nowrap">
+                {o.fechaEntrega ? `${o.fechaEntrega}${o.horaEntrega ? ' ' + o.horaEntrega : ''}` : '—'}
+              </td>
+              <td className="px-3 py-2">{o.receptor || '—'}</td>
+              <td className="px-3 py-2">
+                {o.certificadoEntrega ? (
+                  <a href={o.certificadoEntrega} target="_blank" rel="noreferrer" className="text-steel underline">
+                    Ver
+                  </a>
+                ) : (
+                  '—'
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function Seguimiento() {
   const toast = useToast()
   const { rol } = useAuth()
   const esAdmin = rol === 'ADMIN'
 
   const [empresas, setEmpresas] = useState([])
+  const [panel, setPanel] = useState(null)
   const [cargando, setCargando] = useState(true)
 
   // Carga (solo admin)
@@ -52,10 +103,13 @@ export default function Seguimiento() {
   const [resultados, setResultados] = useState(null)
   const [buscando, setBuscando] = useState(false)
 
+  const cargarPanel = () => getPanelChilexpress().then(setPanel).catch(() => {})
+
   useEffect(() => {
-    getEmpresasChilexpress()
-      .then((emps) => {
+    Promise.all([getEmpresasChilexpress(), getPanelChilexpress()])
+      .then(([emps, pnl]) => {
         setEmpresas(emps)
+        setPanel(pnl)
         if (emps.length) setEmpCarga(emps[0])
       })
       .catch(() => toast.error('No se pudieron cargar los datos iniciales'))
@@ -71,6 +125,7 @@ export default function Seguimiento() {
       toast.success(
         `Carga de ${empCarga}: ${res.nuevas} nuevas, ${res.actualizadas} actualizadas (de ${res.total}).`,
       )
+      cargarPanel()
       if (resultados !== null) buscar()
     } catch (err) {
       toast.error(await mensajeError(err, 'No se pudo procesar el archivo'))
@@ -107,6 +162,49 @@ export default function Seguimiento() {
           Excel exportado del portal de Chilexpress. Módulo independiente del resto del sistema.
         </p>
       </div>
+
+      {panel && (
+        <Card
+          title="Casos a revisar"
+          action={
+            <div className="flex gap-2">
+              <Badge color={panel.retiroSucursal.length ? 'blue' : 'slate'}>
+                {panel.retiroSucursal.length} en sucursal
+              </Badge>
+              <Badge color={panel.revision.length ? 'red' : 'slate'}>
+                {panel.revision.length} con problema
+              </Badge>
+            </div>
+          }
+        >
+          {panel.retiroSucursal.length === 0 && panel.revision.length === 0 ? (
+            <Alert type="success">Nada pendiente: sin encomiendas en sucursal ni con problemas. ✅</Alert>
+          ) : (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-sm font-semibold text-ink mb-1.5">
+                  📦 Disponibles para retiro en sucursal ({panel.retiroSucursal.length})
+                </h3>
+                {panel.retiroSucursal.length ? (
+                  <TablaOts rows={panel.retiroSucursal} />
+                ) : (
+                  <p className="text-sm text-slate-500">Ninguna.</p>
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-ink mb-1.5">
+                  ⚠️ Con problema (devolución / extraviada / dañada / rechazo) ({panel.revision.length})
+                </h3>
+                {panel.revision.length ? (
+                  <TablaOts rows={panel.revision} />
+                ) : (
+                  <p className="text-sm text-slate-500">Ninguna.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {esAdmin && (
         <Card title="1. Cargar archivo de Chilexpress">
@@ -176,55 +274,7 @@ export default function Seguimiento() {
             ) : (
               <>
                 <p className="text-sm text-slate-500 mb-2">{resultados.length} órdenes.</p>
-                <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-ink/70">
-                      <tr>
-                        <th className="text-left px-3 py-2 font-semibold">Nro. OT</th>
-                        <th className="text-left px-3 py-2 font-semibold">Empresa</th>
-                        <th className="text-left px-3 py-2 font-semibold">Estado</th>
-                        <th className="text-left px-3 py-2 font-semibold">Destinatario</th>
-                        <th className="text-left px-3 py-2 font-semibold">Referencia</th>
-                        <th className="text-left px-3 py-2 font-semibold">Destino</th>
-                        <th className="text-left px-3 py-2 font-semibold">Fecha entrega</th>
-                        <th className="text-left px-3 py-2 font-semibold">Receptor</th>
-                        <th className="text-left px-3 py-2 font-semibold">Cert.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {resultados.map((o) => (
-                        <tr key={o.id} className="border-t border-slate-100">
-                          <td className="px-3 py-2 font-mono text-xs">{o.nroOt}</td>
-                          <td className="px-3 py-2">{o.empresa}</td>
-                          <td className="px-3 py-2">
-                            <Badge color={colorEstado(o.estado)}>{o.estado || '—'}</Badge>
-                          </td>
-                          <td className="px-3 py-2">{o.nombreDestinatario || '—'}</td>
-                          <td className="px-3 py-2">{o.nroReferencia || '—'}</td>
-                          <td className="px-3 py-2">{o.destino || '—'}</td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            {o.fechaEntrega ? `${o.fechaEntrega}${o.horaEntrega ? ' ' + o.horaEntrega : ''}` : '—'}
-                          </td>
-                          <td className="px-3 py-2">{o.receptor || '—'}</td>
-                          <td className="px-3 py-2">
-                            {o.certificadoEntrega ? (
-                              <a
-                                href={o.certificadoEntrega}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-steel underline"
-                              >
-                                Ver
-                              </a>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <TablaOts rows={resultados} />
               </>
             )}
           </div>

@@ -8,7 +8,7 @@
   <img alt="Frontend" src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?logo=react&logoColor=black">
   <img alt="Java" src="https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white">
   <img alt="DB" src="https://img.shields.io/badge/DB-MySQL%208-4479A1?logo=mysql&logoColor=white">
-  <img alt="Tests" src="https://img.shields.io/badge/Tests-57%20passing-brightgreen">
+  <img alt="Tests" src="https://img.shields.io/badge/Tests-58%20passing-brightgreen">
 </p>
 
 ---

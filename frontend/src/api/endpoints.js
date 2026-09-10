@@ -196,3 +196,5 @@ export const importarChilexpress = (file, empresa) => {
 }
 export const buscarChilexpress = (params) =>
   client.get('/chilexpress/buscar', { params }).then((r) => r.data)
+export const getPanelChilexpress = () =>
+  client.get('/chilexpress/panel').then((r) => r.data)
