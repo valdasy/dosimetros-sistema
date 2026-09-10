@@ -5,6 +5,7 @@ import com.dosimetros.backend.chilexpress.dto.PanelChilexpressResponse;
 import com.dosimetros.backend.chilexpress.entity.ChilexpressOt;
 import com.dosimetros.backend.chilexpress.repository.ChilexpressOtRepository;
 import com.dosimetros.backend.chilexpress.service.ChilexpressImportService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,6 +29,9 @@ public class ChilexpressController {
 
     /** Laboratorios (dato propio del módulo). */
     private static final List<String> EMPRESAS = List.of("Dosimet", "Photomat");
+
+    /** Tope de resultados de búsqueda (evita traer toda la base). */
+    private static final int MAX_RESULTADOS = 1000;
 
     private final ChilexpressImportService importService;
     private final ChilexpressOtRepository repo;
@@ -68,7 +72,10 @@ public class ChilexpressController {
         retiro.forEach(o -> yaListadas.add(o.getId()));
         revision.forEach(o -> yaListadas.add(o.getId()));
         List<ChilexpressOt> pendientes = repo.findByFechaEntregaIsNullOrderByActualizadoEnDesc()
-                .stream().filter(o -> !yaListadas.contains(o.getId())).toList();
+                .stream()
+                .filter(o -> !yaListadas.contains(o.getId()))
+                .filter(o -> !entregado(o.getEstado())) // por si "EN DESCARGO" llega sin fecha
+                .toList();
 
         return ResponseEntity.ok(new PanelChilexpressResponse(
                 retiro.stream().map(OtChilexpressResponse::new).toList(),
@@ -84,26 +91,44 @@ public class ChilexpressController {
         return ResponseEntity.ok(repo.clientesDistinct(vacio(empresa) ? null : empresa));
     }
 
-    /** Búsqueda por texto (destinatario/referencia/OT) y rango de fecha. */
+    /**
+     * Búsqueda del listado. Requiere al menos un filtro (texto, rango de fecha o
+     * estado); sin ninguno devuelve vacío para no traer toda la base. Resultados
+     * acotados a {@value #MAX_RESULTADOS}.
+     */
     @GetMapping("/buscar")
     @PreAuthorize("hasAnyRole('ADMIN', 'EJECUTIVO')")
     public ResponseEntity<List<OtChilexpressResponse>> buscar(
             @RequestParam(value = "empresa", required = false) String empresa,
             @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "estado", required = false) String estado,
             @RequestParam(value = "fechaTipo", required = false, defaultValue = "entrega") String fechaTipo,
             @RequestParam(value = "desde", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(value = "hasta", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
 
-        String emp = vacio(empresa) ? null : empresa;
         String texto = vacio(q) ? null : q.trim();
-        List<ChilexpressOt> res = "periodo".equalsIgnoreCase(fechaTipo)
-                ? repo.buscarPorPeriodo(emp, texto, desde, hasta)
-                : repo.buscarPorEntrega(emp, texto, desde, hasta);
+        String cat = vacio(estado) ? null : estado.trim().toLowerCase();
+
+        // Al menos un filtro real (la empresa por sí sola no basta).
+        if (texto == null && cat == null && desde == null && hasta == null) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        String emp = vacio(empresa) ? null : empresa;
+        boolean porEntrega = !"periodo".equalsIgnoreCase(fechaTipo);
+        List<ChilexpressOt> res = repo.buscar(emp, texto, porEntrega, desde, hasta, cat,
+                PageRequest.of(0, MAX_RESULTADOS));
         return ResponseEntity.ok(res.stream().map(OtChilexpressResponse::new).toList());
     }
 
     private static boolean vacio(String s) {
         return s == null || s.trim().isEmpty();
+    }
+
+    /** ¿El estado indica entregado? ("EN DESCARGO" o variantes con "entreg"). */
+    private static boolean entregado(String estado) {
+        String e = estado == null ? "" : estado.toLowerCase();
+        return e.contains("descargo") || e.contains("entreg");
     }
 
     private String validarEmpresa(String empresa) {

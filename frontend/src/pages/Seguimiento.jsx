@@ -29,9 +29,22 @@ async function mensajeError(err, fallback) {
 
 function colorEstado(estado) {
   const e = (estado || '').toUpperCase()
-  if (e.includes('ENTREG')) return 'green'
-  if (e.includes('DEVUEL') || e.includes('DESCARGO')) return 'amber'
-  return 'slate'
+  if (e.includes('DESCARGO') || e.includes('ENTREG')) return 'green' // entregado
+  if (e.includes('DEVUEL') || e.includes('EXTRAV') || e.includes('DAÑAD') || e.includes('DANAD') || e.includes('SINIEST') || e.includes('RECHAZ'))
+    return 'red' // problema
+  if (e.includes('RECEPCION') && !e.includes('PRE')) return 'blue' // disponible para retiro
+  if (e.includes('CONTEN')) return 'amber' // en viaje
+  return 'slate' // creada / pre-recepción u otros
+}
+
+// Traducción de los estados de Chilexpress a lenguaje claro (tooltip).
+function significadoEstado(estado) {
+  const e = (estado || '').toUpperCase()
+  if (e.includes('DESCARGO')) return 'Entregado'
+  if (e.includes('PRE') && e.includes('RECEPCION')) return 'Creada, aún no recibida por Chilexpress'
+  if (e.includes('CONTEN')) return 'En viaje al destino'
+  if (e.includes('RECEPCION')) return 'Disponible para retiro en sucursal'
+  return ''
 }
 
 function TablaOts({ rows }) {
@@ -57,7 +70,9 @@ function TablaOts({ rows }) {
               <td className="px-3 py-2 font-mono text-xs">{o.nroOt}</td>
               <td className="px-3 py-2">{o.empresa}</td>
               <td className="px-3 py-2">
-                <Badge color={colorEstado(o.estado)}>{o.estado || '—'}</Badge>
+                <span title={significadoEstado(o.estado)}>
+                  <Badge color={colorEstado(o.estado)}>{o.estado || '—'}</Badge>
+                </span>
               </td>
               <td className="px-3 py-2">{o.nombreDestinatario || '—'}</td>
               <td className="px-3 py-2">{o.nroReferencia || '—'}</td>
@@ -103,6 +118,7 @@ export default function Seguimiento() {
   // Búsqueda
   const [empFiltro, setEmpFiltro] = useState('')
   const [q, setQ] = useState('')
+  const [estadoFiltro, setEstadoFiltro] = useState('')
   const [fechaTipo, setFechaTipo] = useState('entrega')
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
@@ -155,11 +171,16 @@ export default function Seguimiento() {
 
   const buscar = async (e) => {
     if (e) e.preventDefault()
+    // Exige al menos un filtro real (la empresa sola no basta) para no traer todo.
+    if (!q.trim() && !estadoFiltro && !desde && !hasta) {
+      return toast.error('Ingresa al menos un filtro: cliente, estado o un rango de fecha.')
+    }
     setBuscando(true)
     try {
       const params = { fechaTipo }
       if (empFiltro) params.empresa = empFiltro
       if (q.trim()) params.q = q.trim()
+      if (estadoFiltro) params.estado = estadoFiltro
       if (desde) params.desde = desde
       if (hasta) params.hasta = hasta
       setResultados(await buscarChilexpress(params))
@@ -322,6 +343,14 @@ export default function Seguimiento() {
               </option>
             ))}
           </Select>
+          <Select label="Estado" value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)}>
+            <option value="">Todos</option>
+            <option value="creada">Creada (no recibida)</option>
+            <option value="viaje">En viaje</option>
+            <option value="retiro">Disponible para retiro</option>
+            <option value="entregado">Entregado</option>
+            <option value="problema">Con problema</option>
+          </Select>
           <Select label="Filtrar fecha por" value={fechaTipo} onChange={(e) => setFechaTipo(e.target.value)}>
             <option value="entrega">Fecha de entrega</option>
             <option value="periodo">Periodo de carga</option>
@@ -350,8 +379,8 @@ export default function Seguimiento() {
 
         {resultados === null && (
           <Alert type="info">
-            Ingresa un texto y/o un rango de fechas y presiona <b>Buscar</b>. Puedes dejar el
-            texto vacío para ver todas las órdenes del rango.
+            Ingresa <b>al menos un filtro</b> (cliente, estado o un rango de fecha) y presiona
+            <b> Buscar</b>. Se muestran hasta 1000 resultados.
           </Alert>
         )}
       </Card>
