@@ -198,3 +198,5 @@ export const buscarChilexpress = (params) =>
   client.get('/chilexpress/buscar', { params }).then((r) => r.data)
 export const getPanelChilexpress = () =>
   client.get('/chilexpress/panel').then((r) => r.data)
+export const getClientesChilexpress = () =>
+  client.get('/chilexpress/clientes').then((r) => r.data)

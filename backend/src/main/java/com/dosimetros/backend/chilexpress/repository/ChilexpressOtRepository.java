@@ -33,6 +33,13 @@ public interface ChilexpressOtRepository extends JpaRepository<ChilexpressOt, In
      *  excluyen las que ya están en sucursal o con problema. */
     List<ChilexpressOt> findByFechaEntregaIsNullOrderByActualizadoEnDesc();
 
+    /** Nombres de destinatario distintos (para el autocompletado del buscador). */
+    @Query("SELECT DISTINCT o.nombreDestinatario FROM ChilexpressOt o "
+            + "WHERE o.nombreDestinatario IS NOT NULL AND o.nombreDestinatario <> '' "
+            + "AND (:empresa IS NULL OR o.empresa = :empresa) "
+            + "ORDER BY o.nombreDestinatario")
+    List<String> clientesDistinct(@Param("empresa") String empresa);
+
     /** Búsqueda por texto (destinatario / referencia / OT) y rango sobre Fecha Entrega. */
     @Query("SELECT o FROM ChilexpressOt o WHERE "
             + "(:empresa IS NULL OR o.empresa = :empresa) AND "

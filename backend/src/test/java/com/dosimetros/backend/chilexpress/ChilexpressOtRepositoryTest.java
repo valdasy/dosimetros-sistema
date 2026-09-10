@@ -61,4 +61,34 @@ class ChilexpressOtRepositoryTest {
         // La 7 (EN PRE-RECEPCION) es pendiente pura: no está en sucursal ni con problema.
         assertTrue(sinEntrega.stream().anyMatch(o -> o.getNroOt().equals("7")));
     }
+
+    @Test
+    void clientesDistinctDevuelveNombresUnicosOrdenados() {
+        ChilexpressOt a = new ChilexpressOt();
+        a.setEmpresa("Dosimet");
+        a.setNroOt("10");
+        a.setNombreDestinatario("HOSPITAL B");
+        a.setCreadoEn(LocalDateTime.now());
+        a.setActualizadoEn(LocalDateTime.now());
+        repo.save(a);
+
+        ChilexpressOt b = new ChilexpressOt();
+        b.setEmpresa("Dosimet");
+        b.setNroOt("11");
+        b.setNombreDestinatario("HOSPITAL B"); // repetido -> distinct
+        b.setCreadoEn(LocalDateTime.now());
+        b.setActualizadoEn(LocalDateTime.now());
+        repo.save(b);
+
+        ChilexpressOt c = new ChilexpressOt();
+        c.setEmpresa("Photomat");
+        c.setNroOt("12");
+        c.setNombreDestinatario("CLINICA A");
+        c.setCreadoEn(LocalDateTime.now());
+        c.setActualizadoEn(LocalDateTime.now());
+        repo.save(c);
+
+        assertEquals(List.of("CLINICA A", "HOSPITAL B"), repo.clientesDistinct(null));
+        assertEquals(List.of("HOSPITAL B"), repo.clientesDistinct("Dosimet"));
+    }
 }

@@ -76,6 +76,14 @@ public class ChilexpressController {
                 pendientes.stream().map(OtChilexpressResponse::new).toList()));
     }
 
+    /** Nombres de destinatario para el autocompletado del buscador. */
+    @GetMapping("/clientes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EJECUTIVO')")
+    public ResponseEntity<List<String>> clientes(
+            @RequestParam(value = "empresa", required = false) String empresa) {
+        return ResponseEntity.ok(repo.clientesDistinct(vacio(empresa) ? null : empresa));
+    }
+
     /** Búsqueda por texto (destinatario/referencia/OT) y rango de fecha. */
     @GetMapping("/buscar")
     @PreAuthorize("hasAnyRole('ADMIN', 'EJECUTIVO')")

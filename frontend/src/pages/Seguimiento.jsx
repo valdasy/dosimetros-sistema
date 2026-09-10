@@ -4,8 +4,11 @@ import {
   importarChilexpress,
   buscarChilexpress,
   getPanelChilexpress,
+  getClientesChilexpress,
 } from '../api/endpoints'
-import { Card, Button, Input, Select, Alert, Badge, Loading, EmptyState } from '../components/ui'
+import { Card, Button, Input, Select, Alert, Badge, Loading, EmptyState, Pagination } from '../components/ui'
+
+const PAGE_SIZE = 10
 import { useToast } from '../components/Toast'
 import { useAuth } from '../auth/AuthContext'
 
@@ -87,6 +90,9 @@ export default function Seguimiento() {
 
   const [empresas, setEmpresas] = useState([])
   const [panel, setPanel] = useState(null)
+  const [panelEmpresa, setPanelEmpresa] = useState('')
+  const [pagPend, setPagPend] = useState(1)
+  const [clientes, setClientes] = useState([])
   const [cargando, setCargando] = useState(true)
 
   // Carga (solo admin)
@@ -103,18 +109,31 @@ export default function Seguimiento() {
   const [resultados, setResultados] = useState(null)
   const [buscando, setBuscando] = useState(false)
 
-  const cargarPanel = () => getPanelChilexpress().then(setPanel).catch(() => {})
+  const cargarPanel = () => {
+    getPanelChilexpress().then(setPanel).catch(() => {})
+    getClientesChilexpress().then(setClientes).catch(() => {})
+    setPagPend(1)
+  }
 
   useEffect(() => {
-    Promise.all([getEmpresasChilexpress(), getPanelChilexpress()])
-      .then(([emps, pnl]) => {
+    Promise.all([getEmpresasChilexpress(), getPanelChilexpress(), getClientesChilexpress()])
+      .then(([emps, pnl, clis]) => {
         setEmpresas(emps)
         setPanel(pnl)
-        if (emps.length) setEmpCarga(emps[0])
+        setClientes(clis)
+        if (emps.length) {
+          setEmpCarga(emps[0])
+          setPanelEmpresa(emps[0])
+        }
       })
       .catch(() => toast.error('No se pudieron cargar los datos iniciales'))
       .finally(() => setCargando(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const cambiarPanelEmpresa = (emp) => {
+    setPanelEmpresa(emp)
+    setPagPend(1)
+  }
 
   const importar = async (e) => {
     e.preventDefault()
@@ -153,6 +172,14 @@ export default function Seguimiento() {
 
   if (cargando) return <Loading label="Cargando módulo…" />
 
+  // Panel filtrado por la empresa (pestaña) seleccionada.
+  const porEmp = (list) => (list || []).filter((o) => o.empresa === panelEmpresa)
+  const pRevision = panel ? porEmp(panel.revision) : []
+  const pRetiro = panel ? porEmp(panel.retiroSucursal) : []
+  const pPend = panel ? porEmp(panel.pendientes) : []
+  const totalPagesPend = Math.max(1, Math.ceil(pPend.length / PAGE_SIZE))
+  const pendPage = pPend.slice((pagPend - 1) * PAGE_SIZE, pagPend * PAGE_SIZE)
+
   return (
     <div className="space-y-6 max-w-6xl">
       <div>
@@ -168,50 +195,69 @@ export default function Seguimiento() {
           title="Casos a revisar"
           action={
             <div className="flex gap-2 flex-wrap">
-              <Badge color={panel.revision.length ? 'red' : 'slate'}>
-                {panel.revision.length} con problema
-              </Badge>
-              <Badge color={panel.retiroSucursal.length ? 'blue' : 'slate'}>
-                {panel.retiroSucursal.length} en sucursal
-              </Badge>
-              <Badge color={panel.pendientes.length ? 'amber' : 'slate'}>
-                {panel.pendientes.length} por entregar
-              </Badge>
+              <Badge color={pRevision.length ? 'red' : 'slate'}>{pRevision.length} con problema</Badge>
+              <Badge color={pRetiro.length ? 'blue' : 'slate'}>{pRetiro.length} en sucursal</Badge>
+              <Badge color={pPend.length ? 'amber' : 'slate'}>{pPend.length} por entregar</Badge>
             </div>
           }
         >
-          {panel.revision.length === 0 &&
-          panel.retiroSucursal.length === 0 &&
-          panel.pendientes.length === 0 ? (
-            <Alert type="success">Nada pendiente: sin encomiendas por entregar, en sucursal ni con problemas. ✅</Alert>
+          {/* Pestañas por empresa (Dosimet / Photomat) */}
+          <div className="flex gap-1 mb-4 border-b border-slate-200">
+            {empresas.map((emp) => (
+              <button
+                key={emp}
+                type="button"
+                onClick={() => cambiarPanelEmpresa(emp)}
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 ${
+                  panelEmpresa === emp
+                    ? 'border-steel text-steel'
+                    : 'border-transparent text-slate-500 hover:text-ink'
+                }`}
+              >
+                {emp}
+              </button>
+            ))}
+          </div>
+
+          {pRevision.length === 0 && pRetiro.length === 0 && pPend.length === 0 ? (
+            <Alert type="success">
+              {panelEmpresa}: nada pendiente — sin encomiendas por entregar, en sucursal ni con problemas. ✅
+            </Alert>
           ) : (
             <div className="space-y-5">
               <div>
                 <h3 className="text-sm font-semibold text-ink mb-1.5">
-                  ⚠️ Con problema (devolución / extraviada / dañada / rechazo) ({panel.revision.length})
+                  ⚠️ Con problema (devolución / extraviada / dañada / rechazo) ({pRevision.length})
                 </h3>
-                {panel.revision.length ? (
-                  <TablaOts rows={panel.revision} />
+                {pRevision.length ? (
+                  <TablaOts rows={pRevision} />
                 ) : (
                   <p className="text-sm text-slate-500">Ninguna.</p>
                 )}
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-ink mb-1.5">
-                  📦 Disponibles para retiro en sucursal ({panel.retiroSucursal.length})
+                  📦 Disponibles para retiro en sucursal ({pRetiro.length})
                 </h3>
-                {panel.retiroSucursal.length ? (
-                  <TablaOts rows={panel.retiroSucursal} />
+                {pRetiro.length ? (
+                  <TablaOts rows={pRetiro} />
                 ) : (
                   <p className="text-sm text-slate-500">Ninguna.</p>
                 )}
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-ink mb-1.5">
-                  ⏳ Pendientes de entrega ({panel.pendientes.length})
+                  ⏳ Pendientes de entrega ({pPend.length})
                 </h3>
-                {panel.pendientes.length ? (
-                  <TablaOts rows={panel.pendientes} />
+                {pPend.length ? (
+                  <>
+                    <TablaOts rows={pendPage} />
+                    {totalPagesPend > 1 && (
+                      <div className="mt-3">
+                        <Pagination page={pagPend} totalPages={totalPagesPend} onChange={setPagPend} />
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <p className="text-sm text-slate-500">Ninguna.</p>
                 )}
@@ -260,7 +306,14 @@ export default function Seguimiento() {
             placeholder="Ej. AGROVET, o número de OT"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            list="cx-clientes"
+            autoComplete="off"
           />
+          <datalist id="cx-clientes">
+            {clientes.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
           <Select label="Empresa" value={empFiltro} onChange={(e) => setEmpFiltro(e.target.value)}>
             <option value="">Todas</option>
             {empresas.map((emp) => (
