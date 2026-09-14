@@ -30,7 +30,7 @@ async function mensajeError(err, fallback) {
 function colorEstado(estado) {
   const e = (estado || '').toUpperCase()
   if (e.includes('DESCARGO') || e.includes('ENTREG')) return 'green' // entregado
-  if (e.includes('DEVUEL') || e.includes('EXTRAV') || e.includes('DAÑAD') || e.includes('DANAD') || e.includes('SINIEST') || e.includes('RECHAZ'))
+  if (e.includes('DEVUEL') || e.includes('EXTRAV') || e.includes('DAÑAD') || e.includes('DANAD') || e.includes('SINIEST') || e.includes('RECHAZ') || e.includes('SOBRANC'))
     return 'red' // problema
   if (e.includes('RECEPCION') && !e.includes('PRE')) return 'blue' // disponible para retiro
   if (e.includes('CONTEN')) return 'amber' // en viaje
@@ -44,6 +44,7 @@ function significadoEstado(estado) {
   if (e.includes('PRE') && e.includes('RECEPCION')) return 'Creada, aún no recibida por Chilexpress'
   if (e.includes('CONTEN')) return 'En viaje al destino'
   if (e.includes('RECEPCION')) return 'Disponible para retiro en sucursal'
+  if (e.includes('SOBRANC')) return 'Inconveniente en despacho'
   return ''
 }
 
@@ -248,7 +249,7 @@ export default function Seguimiento() {
             <div className="space-y-5">
               <div>
                 <h3 className="text-sm font-semibold text-ink mb-1.5">
-                  ⚠️ Con problema (devolución / extraviada / dañada / rechazo) ({pRevision.length})
+                  ⚠️ Con problema (devolución / extraviada / dañada / rechazo / sobrancia) ({pRevision.length})
                 </h3>
                 {pRevision.length ? (
                   <TablaOts rows={pRevision} />

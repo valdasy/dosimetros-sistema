@@ -22,13 +22,14 @@ public interface ChilexpressOtRepository extends JpaRepository<ChilexpressOt, In
             + "ORDER BY o.actualizadoEn DESC")
     List<ChilexpressOt> retiroEnSucursal();
 
-    /** Panel: OT con problema (devolución, extraviada, dañada, siniestro, rechazo…). */
+    /** Panel: OT con problema (devolución, extraviada, dañada, siniestro, rechazo,
+     *  inconveniente en despacho "EN SOBRANCIA"…). */
     @Query("SELECT o FROM ChilexpressOt o WHERE "
             + "LOWER(o.estado) LIKE '%devuel%' OR LOWER(o.estado) LIKE '%devol%' OR "
             + "LOWER(o.estado) LIKE '%extrav%' OR LOWER(o.estado) LIKE '%perdid%' OR "
             + "LOWER(o.estado) LIKE '%da_ad%' OR LOWER(o.estado) LIKE '%siniest%' OR "
             + "LOWER(o.estado) LIKE '%rechaz%' OR LOWER(o.estado) LIKE '%incidenc%' OR "
-            + "LOWER(o.estado) LIKE '%no entreg%' "
+            + "LOWER(o.estado) LIKE '%sobranc%' OR LOWER(o.estado) LIKE '%no entreg%' "
             + "ORDER BY o.actualizadoEn DESC")
     List<ChilexpressOt> conProblema();
 
@@ -70,7 +71,7 @@ public interface ChilexpressOtRepository extends JpaRepository<ChilexpressOt, In
             + "        LOWER(o.estado) LIKE '%extrav%' OR LOWER(o.estado) LIKE '%perdid%' OR "
             + "        LOWER(o.estado) LIKE '%da_ad%' OR LOWER(o.estado) LIKE '%siniest%' OR "
             + "        LOWER(o.estado) LIKE '%rechaz%' OR LOWER(o.estado) LIKE '%incidenc%' OR "
-            + "        LOWER(o.estado) LIKE '%no entreg%')) ) "
+            + "        LOWER(o.estado) LIKE '%sobranc%' OR LOWER(o.estado) LIKE '%no entreg%')) ) "
             + "ORDER BY o.actualizadoEn DESC")
     List<ChilexpressOt> buscar(@Param("empresa") String empresa, @Param("q") String q,
                                @Param("porEntrega") boolean porEntrega,

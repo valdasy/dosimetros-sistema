@@ -44,6 +44,7 @@ class ChilexpressOtRepositoryTest {
         guardar("5", "DAÑADO", null);                  // prueba el comodín de la ñ
         guardar("6", "EN DESCARGO", LocalDate.now());  // entregada -> no pendiente
         guardar("7", "EN PRE-RECEPCION", null);        // creada, no recibida -> pendiente
+        guardar("8", "EN SOBRANCIA", null);            // inconveniente en despacho -> problema
 
         List<ChilexpressOt> retiro = repo.retiroEnSucursal();
         List<ChilexpressOt> problema = repo.conProblema();
@@ -54,11 +55,13 @@ class ChilexpressOtRepositoryTest {
         // "EN PRE-RECEPCION" NO es retiro (comparte "recepcion" pero tiene "pre").
         assertTrue(retiro.stream().noneMatch(o -> o.getNroOt().equals("7")));
 
-        assertEquals(3, problema.size());
-        assertTrue(problema.stream().allMatch(o -> List.of("3", "4", "5").contains(o.getNroOt())));
+        assertEquals(4, problema.size());
+        assertTrue(problema.stream().allMatch(o -> List.of("3", "4", "5", "8").contains(o.getNroOt())));
+        // "EN SOBRANCIA" (inconveniente en despacho) también es problema.
+        assertTrue(problema.stream().anyMatch(o -> o.getNroOt().equals("8")));
 
-        // Sin fecha de entrega: 1,2,3,4,5,7 (la 6 está entregada).
-        assertEquals(6, sinEntrega.size());
+        // Sin fecha de entrega: 1,2,3,4,5,7,8 (la 6 está entregada).
+        assertEquals(7, sinEntrega.size());
         assertTrue(sinEntrega.stream().noneMatch(o -> o.getNroOt().equals("6")));
         assertTrue(sinEntrega.stream().anyMatch(o -> o.getNroOt().equals("7")));
     }
