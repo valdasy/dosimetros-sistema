@@ -42,7 +42,7 @@ public class ChilexpressController {
     }
 
     @GetMapping("/empresas")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EJECUTIVO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR', 'EJECUTIVO')")
     public ResponseEntity<List<String>> empresas() {
         return ResponseEntity.ok(EMPRESAS);
     }
@@ -61,7 +61,7 @@ public class ChilexpressController {
 
     /** Panel de alertas: OT en sucursal para retiro y OT con problema (siempre visible). */
     @GetMapping("/panel")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EJECUTIVO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR', 'EJECUTIVO')")
     public ResponseEntity<PanelChilexpressResponse> panel() {
         List<ChilexpressOt> retiro = repo.retiroEnSucursal();
         List<ChilexpressOt> revision = repo.conProblema();
@@ -86,7 +86,7 @@ public class ChilexpressController {
 
     /** Nombres de destinatario para el autocompletado del buscador. */
     @GetMapping("/clientes")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EJECUTIVO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR', 'EJECUTIVO')")
     public ResponseEntity<List<String>> clientes(
             @RequestParam(value = "empresa", required = false) String empresa) {
         return ResponseEntity.ok(repo.clientesDistinct(vacio(empresa) ? null : empresa));
@@ -98,7 +98,7 @@ public class ChilexpressController {
      * acotados a {@value #MAX_RESULTADOS}.
      */
     @GetMapping("/buscar")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EJECUTIVO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR', 'EJECUTIVO')")
     public ResponseEntity<List<OtChilexpressResponse>> buscar(
             @RequestParam(value = "empresa", required = false) String empresa,
             @RequestParam(value = "q", required = false) String q,

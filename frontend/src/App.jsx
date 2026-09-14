@@ -58,7 +58,7 @@ export default function App() {
         <Route path="/tipos-porta" element={<ProtectedRoute roles={OPER}><TiposPorta /></ProtectedRoute>} />
         <Route path="/importar" element={<ProtectedRoute roles={['ADMIN']}><Importar /></ProtectedRoute>} />
         <Route path="/informe-isp" element={<ProtectedRoute roles={['ADMIN']}><InformeIsp /></ProtectedRoute>} />
-        <Route path="/seguimiento" element={<ProtectedRoute roles={['ADMIN', 'EJECUTIVO']}><Seguimiento /></ProtectedRoute>} />
+        <Route path="/seguimiento" element={<ProtectedRoute roles={['ADMIN', 'OPERADOR', 'EJECUTIVO']}><Seguimiento /></ProtectedRoute>} />
         {/* Módulo unificado: usuarios de acceso (ADMIN) + ejecutivos (ADMIN/OPERADOR) */}
         <Route path="/usuarios-ejecutivos" element={<ProtectedRoute roles={OPER}><UsuariosEjecutivos /></ProtectedRoute>} />
         {/* Compatibilidad con rutas antiguas */}
