@@ -406,7 +406,7 @@ public class ComparatorService {
                 ? (double) coincidencias / minPalabras
                 : 0;
 
-        double simDirecta = jaroWinkler.apply(nombreSw, nombreCliente);
+        double simDirecta = jaroSimilarity(nombreSw, nombreCliente);
         return Math.max(simDirecta, simPalabras);
     }
 
@@ -424,13 +424,61 @@ public class ComparatorService {
         String s1 = normalizationService.normalizeName(sede1);
         String s2 = normalizationService.normalizeName(sede2);
         if (s1.equals(s2)) return true;
-        return jaroWinkler.apply(s1, s2) >= AREA_SIMILARITY_THRESHOLD;
+        return jaroSimilarity(s1, s2) >= AREA_SIMILARITY_THRESHOLD;
     }
 
     private boolean areasMatch(String area1, String area2) {
         if (area1 == null || area2 == null) return false;
         if (area1.equalsIgnoreCase(area2)) return true;
-        return jaroWinkler.apply(area1.toUpperCase(), area2.toUpperCase()) >= AREA_SIMILARITY_THRESHOLD;
+        return jaroSimilarity(area1.toUpperCase(), area2.toUpperCase()) >= AREA_SIMILARITY_THRESHOLD;
+    }
+
+    /**
+     * Similitud de Jaro "pura" (sin el bono de prefijo de Jaro-Winkler).
+     *
+     * Se usa deliberadamente en vez de JaroWinklerSimilarity para SEDE/ÁREA/NOMBRE
+     * completos: el bono de prefijo de Winkler infla el score cuando dos strings
+     * distintos comparten un prefijo largo (p.ej. "OFICINA SAG LOS ANDES" vs
+     * "OFICINA SAG COQUIMBO" da 0.85 con Winkler — por encima del umbral — aunque
+     * son sedes/áreas completamente distintas). Jaro-Winkler sí se sigue usando
+     * para comparar palabras individuales cortas (nombres, tipos de dosímetro),
+     * donde ese bono de prefijo es apropiado para tolerar errores de tipeo.
+     */
+    private double jaroSimilarity(String s1, String s2) {
+        if (s1.equals(s2)) return 1.0;
+        int len1 = s1.length();
+        int len2 = s2.length();
+        if (len1 == 0 || len2 == 0) return 0.0;
+
+        int matchDistance = Math.max(0, Math.max(len1, len2) / 2 - 1);
+        boolean[] s1Matches = new boolean[len1];
+        boolean[] s2Matches = new boolean[len2];
+
+        int matches = 0;
+        for (int i = 0; i < len1; i++) {
+            int start = Math.max(0, i - matchDistance);
+            int end = Math.min(i + matchDistance + 1, len2);
+            for (int j = start; j < end; j++) {
+                if (s2Matches[j] || s1.charAt(i) != s2.charAt(j)) continue;
+                s1Matches[i] = true;
+                s2Matches[j] = true;
+                matches++;
+                break;
+            }
+        }
+        if (matches == 0) return 0.0;
+
+        double transpositions = 0;
+        int k = 0;
+        for (int i = 0; i < len1; i++) {
+            if (!s1Matches[i]) continue;
+            while (!s2Matches[k]) k++;
+            if (s1.charAt(i) != s2.charAt(k)) transpositions++;
+            k++;
+        }
+        transpositions /= 2;
+
+        return ((matches / (double) len1) + (matches / (double) len2) + ((matches - transpositions) / matches)) / 3.0;
     }
 
     /**
