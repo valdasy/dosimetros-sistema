@@ -11,9 +11,14 @@ import java.util.stream.Collectors;
 /**
  * Servicio de comparación entre listado del software y listado del cliente.
  *
- * Lógica de matching:
- *   - Usuarios con RUT: clave = RUT + AREA + SEDE + TIPO_DOSIMETRO
- *   - Dosímetros especiales (CONTROL/AMBIENTAL/REFERENCIA): clave = AREA + SEDE + TIPO_DOSIMETRO
+ * Lógica de matching, siempre en este orden jerárquico:
+ *   1) SEDE con SEDE
+ *   2) ÁREA con ÁREA
+ *   3) RUT con RUT
+ *   4) NOMBRE + APELLIDO PATERNO + APELLIDO MATERNO con NOMBRE + APELLIDO PATERNO + APELLIDO MATERNO
+ *      (usado para desambiguar RUT duplicados dentro de la misma sede/área, y como
+ *      alternativa cuando el RUT es inválido o no hay match exacto de RUT)
+ *   - Dosímetros especiales (CONTROL/AMBIENTAL/REFERENCIA): clave = SEDE + AREA + TIPO_DOSIMETRO + NOMBRE
  *     Si solo están en software → MANTENER con alerta "Cliente olvidó incluirlo"
  */
 @Service
@@ -24,6 +29,7 @@ public class ComparatorService {
     private final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
 
     private static final double AREA_SIMILARITY_THRESHOLD = 0.85;
+    private static final double NAME_MISMATCH_ALERT_THRESHOLD = 0.5;
 
     public List<UserRecord> compare(List<UserRecord> softwareRecords, List<UserRecord> clientRecords) {
         List<UserRecord> results = new ArrayList<>();
@@ -83,18 +89,23 @@ public class ComparatorService {
                 continue;
             }
 
-            // Buscar match exacto: RUT + sede + área + tipo dosímetro
-            Optional<UserRecord> exactMatch = clUsuarios.stream()
+            // Buscar match exacto: SEDE con SEDE, luego ÁREA con ÁREA, luego RUT con RUT
+            // (+ tipo dosímetro). Si el mismo RUT aparece más de una vez dentro de la
+            // misma sede/área (RUT duplicado en el cliente), se desambigua comparando
+            // NOMBRE + APELLIDO PATERNO + APELLIDO MATERNO.
+            List<UserRecord> exactCandidates = clUsuarios.stream()
                     .filter(c -> !clientMatched.contains(c))
-                    .filter(c -> rutSw.equals(c.getRutCliente()))
                     .filter(c -> sedesMatch(sedeSw, c.getSedeCliente()))
                     .filter(c -> areasMatch(areaSw, c.getAreaCliente()))
+                    .filter(c -> rutSw.equals(c.getRutCliente()))
                     .filter(c -> tiposMatch(tipoSw, c.getUbicacionCliente()))
-                    .findFirst();
+                    .collect(Collectors.toList());
 
-            if (exactMatch.isPresent()) {
+            if (!exactCandidates.isEmpty()) {
                 // MANTENER - match completo
-                UserRecord m = exactMatch.get();
+                UserRecord m = exactCandidates.size() == 1
+                        ? exactCandidates.get(0)
+                        : bestByName(sw.getUsuario(), exactCandidates);
                 clientMatched.add(m);
                 sw.setResultado(UserRecord.ComparisonResult.MANTENER);
                 sw.setNombreCompletoCliente(m.getNombreCompletoCliente());
@@ -110,6 +121,10 @@ public class ComparatorService {
                 }
                 if (!normalizationService.isValidRut(m.getRutCliente())) {
                     alertas.add("⚠ RUT INVÁLIDO EN CLIENTE: " + m.getRutCliente());
+                }
+                if (nameScore(sw.getUsuario(), m.getNombreCompletoCliente()) < NAME_MISMATCH_ALERT_THRESHOLD) {
+                    alertas.add("⚠ VERIFICAR NOMBRE: mismo RUT/sede/área pero nombre distinto — "
+                            + "Software: [" + sw.getUsuario() + "] Cliente: [" + m.getNombreCompletoCliente() + "]");
                 }
                 if (!alertas.isEmpty()) sw.setAlerta(String.join(" | ", alertas));
                 results.add(sw);
@@ -339,48 +354,60 @@ public class ComparatorService {
     private Optional<UserRecord> findByFuzzyName(String nombreSw, List<UserRecord> candidatos) {
         if (nombreSw == null || nombreSw.isBlank()) return Optional.empty();
 
-        Set<String> palabrasSw = palabrasSignificativas(nombreSw);
-        if (palabrasSw.isEmpty()) return Optional.empty();
+        UserRecord bestMatch = bestByName(nombreSw, candidatos);
+        if (bestMatch != null && nameScore(nombreSw, bestMatch.getNombreCompletoCliente()) >= 0.80) {
+            return Optional.of(bestMatch);
+        }
+        return Optional.empty();
+    }
 
+    /**
+     * De entre varios candidatos con el mismo RUT + SEDE + ÁREA (p.ej. RUT duplicado
+     * en el cliente), elige el que tiene el nombre (NOMBRE + APELLIDO PATERNO +
+     * APELLIDO MATERNO) más parecido al del software.
+     */
+    private UserRecord bestByName(String nombreSw, List<UserRecord> candidatos) {
         UserRecord bestMatch = null;
-        double bestScore = 0;
-
+        double bestScore = -1;
         for (UserRecord c : candidatos) {
-            String nc = c.getNombreCompletoCliente();
-            if (nc == null || nc.isBlank()) continue;
-
-            Set<String> palabrasCl = palabrasSignificativas(nc);
-            if (palabrasCl.isEmpty()) continue;
-
-            // Contar palabras coincidentes (con tolerancia fuzzy)
-            int coincidencias = 0;
-            for (String p : palabrasSw) {
-                for (String pc : palabrasCl) {
-                    if (p.equals(pc) || jaroWinkler.apply(p, pc) >= 0.92) {
-                        coincidencias++;
-                        break;
-                    }
-                }
-            }
-
-            int minPalabras = Math.min(palabrasSw.size(), palabrasCl.size());
-            double simPalabras = (minPalabras > 0 && coincidencias >= 2)
-                    ? (double) coincidencias / minPalabras
-                    : 0;
-
-            double simDirecta = jaroWinkler.apply(nombreSw, nc);
-            double score = Math.max(simDirecta, simPalabras);
-
+            double score = nameScore(nombreSw, c.getNombreCompletoCliente());
             if (score > bestScore) {
                 bestScore = score;
                 bestMatch = c;
             }
         }
+        return bestMatch != null ? bestMatch : (candidatos.isEmpty() ? null : candidatos.get(0));
+    }
 
-        if (bestMatch != null && bestScore >= 0.80) {
-            return Optional.of(bestMatch);
+    /**
+     * Calcula la similitud entre el nombre completo del software y el nombre
+     * completo (nombre + apellido paterno + apellido materno) del cliente.
+     */
+    private double nameScore(String nombreSw, String nombreCliente) {
+        if (nombreSw == null || nombreSw.isBlank() || nombreCliente == null || nombreCliente.isBlank()) return 0;
+
+        Set<String> palabrasSw = palabrasSignificativas(nombreSw);
+        Set<String> palabrasCl = palabrasSignificativas(nombreCliente);
+        if (palabrasSw.isEmpty() || palabrasCl.isEmpty()) return 0;
+
+        // Contar palabras coincidentes (con tolerancia fuzzy)
+        int coincidencias = 0;
+        for (String p : palabrasSw) {
+            for (String pc : palabrasCl) {
+                if (p.equals(pc) || jaroWinkler.apply(p, pc) >= 0.92) {
+                    coincidencias++;
+                    break;
+                }
+            }
         }
-        return Optional.empty();
+
+        int minPalabras = Math.min(palabrasSw.size(), palabrasCl.size());
+        double simPalabras = (minPalabras > 0 && coincidencias >= 2)
+                ? (double) coincidencias / minPalabras
+                : 0;
+
+        double simDirecta = jaroWinkler.apply(nombreSw, nombreCliente);
+        return Math.max(simDirecta, simPalabras);
     }
 
     private Set<String> palabrasSignificativas(String nombre) {
