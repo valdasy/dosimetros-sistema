@@ -84,6 +84,17 @@ public interface AsignacionRepository extends JpaRepository<Asignacion, Integer>
     """)
     List<Object[]> conteoPorClienteTrimestre(@Param("ejecutivoId") Integer ejecutivoId);
 
+    // Igual que el anterior pero desglosado por tipo de porta: permite totalizar
+    // por porta los dosímetros pendientes de asignación (lo que el cliente tenía
+    // en el trimestre base). Devuelve [clienteId, trimestre, portaId, portaNombre, cantidad].
+    @Query("""
+        SELECT a.cliente.id, a.trimestre, tp.id, tp.nombre, COUNT(a)
+        FROM Asignacion a JOIN a.tipoPorta tp
+        WHERE (:ejecutivoId IS NULL OR a.ejecutivo.id = :ejecutivoId)
+        GROUP BY a.cliente.id, a.trimestre, tp.id, tp.nombre
+    """)
+    List<Object[]> conteoPorClienteTrimestrePorta(@Param("ejecutivoId") Integer ejecutivoId);
+
     // #14 (Correcciones): asignaciones filtrables (admin), para corregir en lote.
     @Query("""
         SELECT a FROM Asignacion a

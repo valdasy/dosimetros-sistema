@@ -5,6 +5,7 @@ import com.dosimetros.backend.dto.asignacion.AsignacionMasivaResponse;
 import com.dosimetros.backend.dto.asignacion.AsignacionRequest;
 import com.dosimetros.backend.dto.asignacion.AsignacionResponse;
 import com.dosimetros.backend.dto.asignacion.ConteoClienteTrimestreResponse;
+import com.dosimetros.backend.dto.asignacion.ConteoClienteTrimestrePortaResponse;
 import com.dosimetros.backend.dto.asignacion.CorreccionExcelResponse;
 import com.dosimetros.backend.dto.asignacion.CorreccionMasivaRequest;
 import com.dosimetros.backend.dto.asignacion.EditarAsignacionRequest;
@@ -185,6 +186,14 @@ public class AsignacionController {
     public ResponseEntity<List<ConteoClienteTrimestreResponse>> resumenClienteTrimestre(
             @RequestParam(required = false) Integer ejecutivoId) {
         return ResponseEntity.ok(service.conteoPorClienteTrimestre(ejecutivoId));
+    }
+
+    // Igual pero desglosado por tipo de porta (para totalizar los pendientes por porta).
+    @GetMapping("/resumen-cliente-trimestre-porta")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    public ResponseEntity<List<ConteoClienteTrimestrePortaResponse>> resumenClienteTrimestrePorta(
+            @RequestParam(required = false) Integer ejecutivoId) {
+        return ResponseEntity.ok(service.conteoPorClienteTrimestrePorta(ejecutivoId));
     }
 
     // #18: marcar asignaciones como enviadas (o revertir).

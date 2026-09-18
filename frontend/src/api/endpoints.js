@@ -130,6 +130,10 @@ export const getResumenClienteTrimestre = (params) =>
   client.get('/asignaciones/resumen-cliente-trimestre', { params }).then((r) => r.data)
 export const getMisResumenClienteTrimestre = () =>
   client.get('/ejecutivo/resumen-cliente-trimestre').then((r) => r.data)
+export const getResumenClienteTrimestrePorta = (params) =>
+  client.get('/asignaciones/resumen-cliente-trimestre-porta', { params }).then((r) => r.data)
+export const getMisResumenClienteTrimestrePorta = () =>
+  client.get('/ejecutivo/resumen-cliente-trimestre-porta').then((r) => r.data)
 export const correccionMasivaAsignaciones = (data) =>
   client.patch('/asignaciones/correccion-masiva', data).then((r) => r.data)
 export const exportarCorreccionExcel = (ids) =>

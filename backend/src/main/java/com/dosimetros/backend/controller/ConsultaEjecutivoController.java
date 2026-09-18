@@ -99,6 +99,13 @@ public class ConsultaEjecutivoController {
         return ResponseEntity.ok(asignacionService.conteoPorClienteTrimestre(ejecutivoId));
     }
 
+    // Igual pero desglosado por tipo de porta (para totalizar los pendientes por porta).
+    @GetMapping("/resumen-cliente-trimestre-porta")
+    public ResponseEntity<List<com.dosimetros.backend.dto.asignacion.ConteoClienteTrimestrePortaResponse>> misResumenClienteTrimestrePorta() {
+        Integer ejecutivoId = currentUserService.requireEjecutivoId();
+        return ResponseEntity.ok(asignacionService.conteoPorClienteTrimestrePorta(ejecutivoId));
+    }
+
     @GetMapping("/mis-filtros")
     public ResponseEntity<MisFiltrosResponse> misFiltros() {
         Integer ejecutivoId = currentUserService.requireEjecutivoId();

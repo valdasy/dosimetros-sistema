@@ -5,6 +5,7 @@ import com.dosimetros.backend.dto.asignacion.AsignacionMasivaResponse;
 import com.dosimetros.backend.dto.asignacion.AsignacionRequest;
 import com.dosimetros.backend.dto.asignacion.AsignacionResponse;
 import com.dosimetros.backend.dto.asignacion.ConteoClienteTrimestreResponse;
+import com.dosimetros.backend.dto.asignacion.ConteoClienteTrimestrePortaResponse;
 import com.dosimetros.backend.dto.asignacion.CorreccionExcelResponse;
 import com.dosimetros.backend.dto.asignacion.CorreccionMasivaRequest;
 import com.dosimetros.backend.dto.asignacion.EditarAsignacionRequest;
@@ -546,6 +547,15 @@ public class AsignacionService {
         return asignacionRepository.conteoPorClienteTrimestre(ejecutivoId).stream()
                 .map(o -> new ConteoClienteTrimestreResponse(
                         (Integer) o[0], (String) o[1], (String) o[2], ((Number) o[3]).longValue()))
+                .toList();
+    }
+
+    // Conteo por cliente, trimestre y tipo de porta (para desglosar por porta los
+    // pendientes de asignación).
+    public List<ConteoClienteTrimestrePortaResponse> conteoPorClienteTrimestrePorta(Integer ejecutivoId) {
+        return asignacionRepository.conteoPorClienteTrimestrePorta(ejecutivoId).stream()
+                .map(o -> new ConteoClienteTrimestrePortaResponse(
+                        (Integer) o[0], (String) o[1], (Integer) o[2], (String) o[3], ((Number) o[4]).longValue()))
                 .toList();
     }
 

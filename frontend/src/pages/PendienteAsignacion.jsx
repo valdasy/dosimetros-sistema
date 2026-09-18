@@ -4,6 +4,8 @@ import {
   getEjecutivos,
   getResumenClienteTrimestre,
   getMisResumenClienteTrimestre,
+  getResumenClienteTrimestrePorta,
+  getMisResumenClienteTrimestrePorta,
 } from '../api/endpoints'
 import { Card, Select, Input, Button, Badge, Loading, EmptyState, Pagination } from '../components/ui'
 import { useToast } from '../components/Toast'
@@ -16,6 +18,7 @@ export default function PendienteAsignacion() {
   const toast = useToast()
 
   const [conteos, setConteos] = useState([])
+  const [conteosPorta, setConteosPorta] = useState([])
   const [ejecutivos, setEjecutivos] = useState([])
   const [ejecutivoId, setEjecutivoId] = useState('')
   const [trimestresSel, setTrimestresSel] = useState(() => new Set()) // vacío = todos (los disponibles)
@@ -33,10 +36,14 @@ export default function PendienteAsignacion() {
     const pConteos = esEjecutivo
       ? getMisResumenClienteTrimestre()
       : getResumenClienteTrimestre(ejecutivoId ? { ejecutivoId } : undefined)
+    const pPorta = esEjecutivo
+      ? getMisResumenClienteTrimestrePorta()
+      : getResumenClienteTrimestrePorta(ejecutivoId ? { ejecutivoId } : undefined)
     pConteos
       .then(setConteos)
       .catch(() => toast.error('No se pudo cargar la información'))
       .finally(() => setLoading(false))
+    pPorta.then(setConteosPorta).catch(() => setConteosPorta([]))
   }
 
   useEffect(() => {
@@ -121,6 +128,31 @@ export default function PendienteAsignacion() {
       return a.razonSocial.localeCompare(b.razonSocial)
     })
   }, [clientesDeConteo, busqueda, soloPendientes, base, colActual, porCliente])
+
+  // Resumen de pendientes: para los clientes que tuvieron en el trimestre base y
+  // aún no en el actual, cuántos dosímetros tenían en el base, con desglose por
+  // tipo de porta. Solo tiene sentido al comparar dos trimestres.
+  const resumenPendientes = useMemo(() => {
+    if (!base || !colActual || base === colActual) return null
+    const q = busqueda.trim().toLowerCase()
+    const pendientesIds = new Set()
+    for (const c of clientesDeConteo) {
+      if (q && !c.razonSocial.toLowerCase().includes(q)) continue
+      const cc = porCliente.get(c.id) || {}
+      if ((cc[base] || 0) > 0 && !((cc[colActual] || 0) > 0)) pendientesIds.add(c.id)
+    }
+    let total = 0
+    const porPorta = new Map()
+    for (const r of conteosPorta) {
+      if (r.trimestre !== base || !pendientesIds.has(r.clienteId)) continue
+      total += r.cantidad
+      porPorta.set(r.tipoPortaNombre, (porPorta.get(r.tipoPortaNombre) || 0) + r.cantidad)
+    }
+    const porta = [...porPorta.entries()]
+      .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+    return { clientes: pendientesIds.size, total, porta }
+  }, [base, colActual, busqueda, clientesDeConteo, porCliente, conteosPorta])
 
   useEffect(() => { setPage(1) }, [busqueda, soloPendientes, trimestresSel, ejecutivoId])
 
@@ -214,6 +246,26 @@ export default function PendienteAsignacion() {
           )}
         </div>
       </Card>
+
+      {resumenPendientes && resumenPendientes.clientes > 0 && (
+        <Card title="Pendientes de asignación — resumen">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge color="amber">{resumenPendientes.clientes} clientes pendientes</Badge>
+            <Badge color="blue">{resumenPendientes.total} dosímetros en total</Badge>
+          </div>
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {resumenPendientes.porta.map((p) => (
+              <div key={p.nombre} className="flex justify-between border border-mist/60 rounded-lg px-3 py-2 text-sm">
+                <span className="text-slate-600 truncate mr-2">{p.nombre}</span>
+                <span className="font-semibold text-ink">{p.cantidad}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 mt-2">
+            Dosímetros que estos clientes tenían en <b>{base}</b> y aún no en <b>{colActual}</b>, por tipo de porta.
+          </p>
+        </Card>
+      )}
 
       <Card
         title={`Clientes (${filas.length})`}
