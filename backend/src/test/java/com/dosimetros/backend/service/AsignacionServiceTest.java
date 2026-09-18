@@ -4,10 +4,13 @@ import com.dosimetros.backend.dto.asignacion.AsignacionMasivaRequest;
 import com.dosimetros.backend.dto.asignacion.AsignacionMasivaResponse;
 import com.dosimetros.backend.dto.asignacion.AsignacionRequest;
 import com.dosimetros.backend.dto.asignacion.CorreccionMasivaRequest;
+import com.dosimetros.backend.dto.asignacion.LiberacionMasivaRequest;
+import com.dosimetros.backend.dto.asignacion.LiberacionPreviewResponse;
 import com.dosimetros.backend.entity.Cliente;
 import com.dosimetros.backend.entity.Dosimetro;
 import com.dosimetros.backend.entity.Ejecutivo;
 import com.dosimetros.backend.entity.Empresa;
+import com.dosimetros.backend.entity.Tarea;
 import com.dosimetros.backend.entity.TipoDosimetro;
 import com.dosimetros.backend.entity.TipoPorta;
 import com.dosimetros.backend.repository.AsignacionRepository;
@@ -220,6 +223,101 @@ class AsignacionServiceTest {
         assertEquals(2, n);
         assertEquals("http://nuevo", a1.getLinkTrello());
         assertEquals("http://nuevo", a2.getLinkTrello());
+    }
+
+    private Tarea tarea(int id, String num) {
+        Tarea t = new Tarea();
+        t.setId(id);
+        t.setNumeroTarea(num);
+        return t;
+    }
+
+    private com.dosimetros.backend.entity.Asignacion asignacionLiberable(
+            int id, int dosId, String estadoDosim, Tarea tarea, Integer bandeja, Integer slot) {
+        com.dosimetros.backend.entity.Asignacion a = new com.dosimetros.backend.entity.Asignacion();
+        a.setId(id);
+        a.setDosimetro(dosimetro(dosId, estadoDosim, 2));
+        a.setTarea(tarea);
+        a.setNumeroBandeja(bandeja);
+        a.setSlotBandeja(slot);
+        return a;
+    }
+
+    @Test
+    void liberarMasivoBorraRegistrosYDejaDosimetrosDisponibles() {
+        Cliente c = new Cliente(); c.setId(1);
+        when(clienteRepository.findById(1)).thenReturn(Optional.of(c));
+        Tarea t = tarea(5, "1765");
+        var a1 = asignacionLiberable(1, 10, "asignado", t, 1, 10);
+        var a2 = asignacionLiberable(2, 11, "asignado", t, 1, 11);
+        when(asignacionRepository.paraLiberar(eq(1), eq("2T2026"), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(a1, a2));
+        when(dosimetroRepository.findById(10)).thenReturn(Optional.of(a1.getDosimetro()));
+        when(dosimetroRepository.findById(11)).thenReturn(Optional.of(a2.getDosimetro()));
+        when(dosimetroRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var req = new LiberacionMasivaRequest();
+        req.setClienteId(1); req.setTrimestre("2T2026");
+
+        int n = service.liberarMasivo(req);
+
+        assertEquals(2, n);
+        verify(asignacionRepository).deleteAll(any());
+        assertEquals("disponible", a1.getDosimetro().getEstado());
+        assertEquals("disponible", a2.getDosimetro().getEstado());
+    }
+
+    @Test
+    void liberarMasivoNoReactivaDosimetrosDadosDeBaja() {
+        Cliente c = new Cliente(); c.setId(1);
+        when(clienteRepository.findById(1)).thenReturn(Optional.of(c));
+        var a1 = asignacionLiberable(1, 10, "baja", null, null, null);
+        when(asignacionRepository.paraLiberar(eq(1), eq("2T2026"), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(a1));
+        when(dosimetroRepository.findById(10)).thenReturn(Optional.of(a1.getDosimetro()));
+
+        var req = new LiberacionMasivaRequest();
+        req.setClienteId(1); req.setTrimestre("2T2026");
+        service.liberarMasivo(req);
+
+        assertEquals("baja", a1.getDosimetro().getEstado()); // no se toca
+        verify(dosimetroRepository, never()).save(any());
+    }
+
+    @Test
+    void liberarConRangoSinTareaFalla() {
+        var req = new LiberacionMasivaRequest();
+        req.setClienteId(1); req.setTrimestre("2T2026");
+        req.setDesdeBandeja(1); // rango sin tarea -> inválido
+
+        assertThrows(IllegalArgumentException.class, () -> service.liberarMasivo(req));
+        verify(asignacionRepository, never()).paraLiberar(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void previewAgrupaPorTareaYBandejaConRangoDeSlots() {
+        Cliente c = new Cliente(); c.setId(1);
+        when(clienteRepository.findById(1)).thenReturn(Optional.of(c));
+        Tarea t = tarea(5, "1765");
+        when(asignacionRepository.paraLiberar(eq(1), eq("2T2026"), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(
+                        asignacionLiberable(1, 10, "asignado", t, 1, 5),
+                        asignacionLiberable(2, 11, "asignado", t, 1, 40),
+                        asignacionLiberable(3, 12, "asignado", t, 2, 3)));
+
+        var req = new LiberacionMasivaRequest();
+        req.setClienteId(1); req.setTrimestre("2T2026");
+
+        LiberacionPreviewResponse prev = service.previsualizarLiberacion(req);
+
+        assertEquals(3, prev.getTotal());
+        assertEquals(2, prev.getGrupos().size());
+        var g0 = prev.getGrupos().get(0); // tarea 1765, bandeja 1: slots 5..40 (2)
+        assertEquals("1765", g0.getTarea());
+        assertEquals(1, g0.getNumeroBandeja());
+        assertEquals(5, g0.getSlotDesde());
+        assertEquals(40, g0.getSlotHasta());
+        assertEquals(2, g0.getCantidad());
     }
 
     @Test

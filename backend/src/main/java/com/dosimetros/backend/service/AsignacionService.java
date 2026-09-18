@@ -8,6 +8,8 @@ import com.dosimetros.backend.dto.asignacion.ConteoClienteTrimestreResponse;
 import com.dosimetros.backend.dto.asignacion.CorreccionExcelResponse;
 import com.dosimetros.backend.dto.asignacion.CorreccionMasivaRequest;
 import com.dosimetros.backend.dto.asignacion.EditarAsignacionRequest;
+import com.dosimetros.backend.dto.asignacion.LiberacionMasivaRequest;
+import com.dosimetros.backend.dto.asignacion.LiberacionPreviewResponse;
 import com.dosimetros.backend.dto.asignacion.LoteAsignacionResponse;
 import com.dosimetros.backend.dto.asignacion.MisFiltrosResponse;
 import com.dosimetros.backend.dto.asignacion.OpcionResponse;
@@ -39,9 +41,11 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class AsignacionService {
@@ -269,6 +273,81 @@ public class AsignacionService {
                 asignaciones.size(),
                 asignaciones
         );
+    }
+
+    /**
+     * Vista previa de una liberación (corrección): cuántas asignaciones se
+     * eliminarían y su detalle agrupado por tarea/bandeja, sin aplicar cambios.
+     */
+    @Transactional(readOnly = true)
+    public LiberacionPreviewResponse previsualizarLiberacion(LiberacionMasivaRequest req) {
+        return construirPreview(buscarParaLiberar(req));
+    }
+
+    /**
+     * Aplica la liberación: BORRA los registros de asignación que coinciden con
+     * los filtros (fue un error) y devuelve sus dosímetros a "disponible" (salvo
+     * los dados de baja). Devuelve cuántas asignaciones se eliminaron.
+     */
+    @Transactional
+    public int liberarMasivo(LiberacionMasivaRequest req) {
+        List<Asignacion> encontradas = buscarParaLiberar(req);
+
+        // Dosímetros involucrados (distintos), para devolverlos a disponible.
+        Set<Integer> dosimetroIds = new LinkedHashSet<>();
+        for (Asignacion a : encontradas) {
+            dosimetroIds.add(a.getDosimetro().getId());
+        }
+
+        // 1) Borrar los registros de asignación erróneos (historial).
+        asignacionRepository.deleteAll(encontradas);
+        asignacionRepository.flush();
+
+        // 2) Devolver los dosímetros a "disponible" (los dados de baja no se tocan).
+        for (Integer id : dosimetroIds) {
+            Dosimetro d = dosimetroRepository.findById(id).orElse(null);
+            if (d != null && !"baja".equalsIgnoreCase(d.getEstado())) {
+                d.setEstado("disponible");
+                dosimetroRepository.save(d);
+            }
+        }
+
+        return encontradas.size();
+    }
+
+    private List<Asignacion> buscarParaLiberar(LiberacionMasivaRequest req) {
+        if (req.tieneRango() && !req.tieneTarea()) {
+            throw new IllegalArgumentException(
+                    "El rango de bandeja/slot requiere seleccionar una tarea");
+        }
+        clienteRepository.findById(req.getClienteId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Cliente no encontrado con id: " + req.getClienteId()));
+        String tareaNumero = req.tieneTarea() ? req.getTareaNumero().trim() : null;
+        return asignacionRepository.paraLiberar(
+                req.getClienteId(), req.getTrimestre(), tareaNumero,
+                req.getDesdeBandeja(), req.getDesdeSlot(),
+                req.getHastaBandeja(), req.getHastaSlot());
+    }
+
+    // Agrupa las asignaciones por (tarea, bandeja) conservando el orden y calcula
+    // el rango de slots (mínimo/máximo) y la cantidad de cada grupo.
+    private LiberacionPreviewResponse construirPreview(List<Asignacion> asignaciones) {
+        Map<String, LiberacionPreviewResponse.Grupo> grupos = new LinkedHashMap<>();
+        for (Asignacion a : asignaciones) {
+            String tarea = a.getTarea() != null ? a.getTarea().getNumeroTarea() : "Sin tarea";
+            Integer bandeja = a.getNumeroBandeja();
+            Integer slot = a.getSlotBandeja();
+            String clave = tarea + "||" + (bandeja == null ? "sb" : bandeja);
+            LiberacionPreviewResponse.Grupo g = grupos.computeIfAbsent(clave,
+                    k -> new LiberacionPreviewResponse.Grupo(tarea, bandeja, null, null, 0));
+            g.setCantidad(g.getCantidad() + 1);
+            if (slot != null) {
+                if (g.getSlotDesde() == null || slot < g.getSlotDesde()) g.setSlotDesde(slot);
+                if (g.getSlotHasta() == null || slot > g.getSlotHasta()) g.setSlotHasta(slot);
+            }
+        }
+        return new LiberacionPreviewResponse(asignaciones.size(), new ArrayList<>(grupos.values()));
     }
 
     // Exporta a Excel un conjunto de asignaciones por sus ids (resumen de asignación).

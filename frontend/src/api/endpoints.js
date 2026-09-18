@@ -104,6 +104,11 @@ export const desactivarEjecutivo = (id) => client.patch(`/ejecutivos/${id}/desac
 // --- Asignaciones ---
 export const asignarMasivo = (data) =>
   client.post('/asignaciones/masivo', data).then((r) => r.data)
+// Corrección: liberar (eliminar) asignaciones por cliente + trimestre (+ tarea y rango).
+export const previewLiberacion = (data) =>
+  client.post('/asignaciones/liberacion/preview', data).then((r) => r.data)
+export const liberarMasivo = (data) =>
+  client.post('/asignaciones/liberacion', data).then((r) => r.data)
 export const asignarIndividual = (data) =>
   client.post('/asignaciones', data).then((r) => r.data)
 export const buscarAsignaciones = (params) =>

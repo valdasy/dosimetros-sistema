@@ -9,6 +9,8 @@ import com.dosimetros.backend.dto.asignacion.CorreccionExcelResponse;
 import com.dosimetros.backend.dto.asignacion.CorreccionMasivaRequest;
 import com.dosimetros.backend.dto.asignacion.EditarAsignacionRequest;
 import com.dosimetros.backend.dto.asignacion.ImportacionAsignacionesResponse;
+import com.dosimetros.backend.dto.asignacion.LiberacionMasivaRequest;
+import com.dosimetros.backend.dto.asignacion.LiberacionPreviewResponse;
 import com.dosimetros.backend.dto.asignacion.MarcarEnvioRequest;
 import com.dosimetros.backend.service.AsignacionService;
 import com.dosimetros.backend.service.ImportacionAsignacionService;
@@ -146,6 +148,24 @@ public class AsignacionController {
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
     public ResponseEntity<CorreccionExcelResponse> importarCorreccion(@RequestParam("file") MultipartFile file) {
         return ResponseEntity.ok(service.importarCorreccion(file));
+    }
+
+    // Corrección — vista previa: cuántas asignaciones se liberarían (sin aplicar).
+    @PostMapping("/liberacion/preview")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<LiberacionPreviewResponse> previewLiberacion(
+            @Valid @RequestBody LiberacionMasivaRequest request) {
+        return ResponseEntity.ok(service.previsualizarLiberacion(request));
+    }
+
+    // Corrección — aplicar: BORRA las asignaciones que coinciden y devuelve sus
+    // dosímetros a "disponible". Solo Administrador (elimina historial). Devuelve
+    // la cantidad liberada.
+    @PostMapping("/liberacion")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Integer> liberarMasivo(
+            @Valid @RequestBody LiberacionMasivaRequest request) {
+        return ResponseEntity.ok(service.liberarMasivo(request));
     }
 
     // #18: asignaciones por estado de envío (admin/operador, con filtro de ejecutivo).

@@ -104,6 +104,35 @@ public interface AsignacionRepository extends JpaRepository<Asignacion, Integer>
             @Param("link") String link
     );
 
+    // Corrección (liberación): asignaciones de un cliente en un trimestre,
+    // opcionalmente acotadas a una tarea y a un rango continuo de bandeja/slot.
+    // El rango es lexicográfico por (bandeja, slot); cualquier extremo puede ser
+    // null (sin límite). Las filas sin bandeja quedan fuera cuando se pide rango.
+    @Query("""
+        SELECT a FROM Asignacion a
+        WHERE a.cliente.id = :clienteId
+          AND a.trimestre = :trimestre
+          AND (:tareaNumero IS NULL OR a.tarea.numeroTarea = :tareaNumero)
+          AND (:desdeBandeja IS NULL
+               OR a.numeroBandeja > :desdeBandeja
+               OR (a.numeroBandeja = :desdeBandeja
+                   AND (:desdeSlot IS NULL OR a.slotBandeja >= :desdeSlot)))
+          AND (:hastaBandeja IS NULL
+               OR a.numeroBandeja < :hastaBandeja
+               OR (a.numeroBandeja = :hastaBandeja
+                   AND (:hastaSlot IS NULL OR a.slotBandeja <= :hastaSlot)))
+        ORDER BY a.tarea.id ASC, a.numeroBandeja ASC, a.slotBandeja ASC
+    """)
+    List<Asignacion> paraLiberar(
+            @Param("clienteId") Integer clienteId,
+            @Param("trimestre") String trimestre,
+            @Param("tareaNumero") String tareaNumero,
+            @Param("desdeBandeja") Integer desdeBandeja,
+            @Param("desdeSlot") Integer desdeSlot,
+            @Param("hastaBandeja") Integer hastaBandeja,
+            @Param("hastaSlot") Integer hastaSlot
+    );
+
     // HU #17: KPIs de asignaciones (todos opcionalmente filtrados por trimestre)
     @Query("SELECT COUNT(a) FROM Asignacion a WHERE (:trimestre IS NULL OR a.trimestre = :trimestre)")
     long contarAsignaciones(@Param("trimestre") String trimestre);

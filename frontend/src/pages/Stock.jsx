@@ -12,6 +12,7 @@ import {
   liberarDosimetro,
 } from '../api/endpoints'
 import { Card, Select, Badge, Button, Loading, EmptyState, Alert, Modal } from '../components/ui'
+import LiberacionMasiva from '../components/LiberacionMasiva'
 import { useToast } from '../components/Toast'
 
 const estadoColor = { disponible: 'green', asignado: 'blue', baja: 'red', dañado: 'amber' }
@@ -354,6 +355,9 @@ export default function Stock() {
           </div>
         )}
       </Card>
+
+      {/* Corrección de asignaciones (liberar) — solo Administrador */}
+      <LiberacionMasiva />
 
       {/* Filtros */}
       <Card title="Filtros">
