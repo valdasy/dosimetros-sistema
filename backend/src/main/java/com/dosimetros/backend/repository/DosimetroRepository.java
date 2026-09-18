@@ -62,6 +62,19 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
     """)
     List<Object[]> conteoDosimetrosPorTarea();
 
+    // Igual que el anterior pero acotado por número de tarea (búsqueda): así no se
+    // agregan TODAS las tareas de golpe, solo las que coinciden con el texto.
+    @Query("""
+        SELECT d.tarea.id, d.tarea.numeroTarea, COUNT(d),
+               SUM(CASE WHEN d.estado = 'disponible' THEN 1 ELSE 0 END)
+        FROM Dosimetro d
+        WHERE d.tarea IS NOT NULL
+          AND LOWER(d.tarea.numeroTarea) LIKE LOWER(CONCAT('%', :q, '%'))
+        GROUP BY d.tarea.id, d.tarea.numeroTarea
+        ORDER BY d.tarea.numeroTarea ASC
+    """)
+    List<Object[]> conteoDosimetrosPorTareaFiltrado(@Param("q") String q);
+
     // HU buscar: solo dosímetros que ya tienen al menos una asignación (fueron asignados)
     @Query("""
         SELECT d FROM Dosimetro d

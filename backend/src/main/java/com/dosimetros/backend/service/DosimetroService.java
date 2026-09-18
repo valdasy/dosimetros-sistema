@@ -337,14 +337,19 @@ public class DosimetroService {
      * eliminables. Una tarea es eliminable solo si TODOS sus dosímetros están
      * disponibles y ninguno tiene historial de asignación (protege datos reales).
      */
-    public List<TareaEliminableResponse> listarTareasEliminables() {
+    public List<TareaEliminableResponse> listarTareasEliminables(String q) {
+        // Búsqueda obligatoria por número de tarea: sin texto no se consulta nada
+        // (evita agregar TODAS las tareas cada vez que se entra a Stock).
+        if (q == null || q.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
         // Tareas donde se hizo alguna asignación: NO se pueden borrar (perderían
         // ese dato del historial). El historial pasado del dosímetro no importa,
         // porque al eliminar la tarea el dosímetro se conserva (solo se desarma).
         Set<Integer> conAsignaciones = new HashSet<>(asignacionRepository.tareaIdsConAsignaciones());
 
         List<TareaEliminableResponse> out = new ArrayList<>();
-        for (Object[] r : dosimetroRepository.conteoDosimetrosPorTarea()) {
+        for (Object[] r : dosimetroRepository.conteoDosimetrosPorTareaFiltrado(q.trim())) {
             Integer tareaId = (Integer) r[0];
             String numero = (String) r[1];
             int total = ((Number) r[2]).intValue();

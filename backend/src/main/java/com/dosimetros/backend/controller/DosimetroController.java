@@ -244,8 +244,9 @@ public class DosimetroController {
     // Corrección de carga — lista de tareas con conteos y si son eliminables.
     @GetMapping("/tareas/eliminables")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<TareaEliminableResponse>> tareasEliminables() {
-        return ResponseEntity.ok(service.listarTareasEliminables());
+    public ResponseEntity<List<TareaEliminableResponse>> tareasEliminables(
+            @RequestParam(required = false) String q) {
+        return ResponseEntity.ok(service.listarTareasEliminables(q));
     }
 
     // Corrección de carga — elimina tareas y sus dosímetros (solo si están

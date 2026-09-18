@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { getTareasEliminables, eliminarTareas } from '../api/endpoints'
 import { Card, Button, Input, Alert, Badge, Modal } from './ui'
 import { useToast } from './Toast'
@@ -15,28 +15,30 @@ export default function EliminarTareas() {
 
   const [tareas, setTareas] = useState([])
   const [filtro, setFiltro] = useState('')
+  const [buscado, setBuscado] = useState(false)
   const [seleccion, setSeleccion] = useState(() => new Set())
   const [cargando, setCargando] = useState(false)
   const [eliminando, setEliminando] = useState(false)
   const [confirmar, setConfirmar] = useState(false)
 
-  const recargar = () => {
+  // Solo consulta al buscar por número de tarea (no carga todas al entrar a Stock).
+  const buscar = (e) => {
+    if (e) e.preventDefault()
+    const q = filtro.trim()
+    if (!q) {
+      toast.error('Escribe un número de tarea para buscar.')
+      return
+    }
     setCargando(true)
-    getTareasEliminables()
-      .then(setTareas)
+    getTareasEliminables(q)
+      .then((res) => {
+        setTareas(res)
+        setBuscado(true)
+        setSeleccion(new Set())
+      })
       .catch(() => toast.error('No se pudieron cargar las tareas'))
       .finally(() => setCargando(false))
   }
-
-  useEffect(() => {
-    if (rol === 'ADMIN') recargar()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rol])
-
-  const filtradas = useMemo(() => {
-    const q = filtro.trim().toLowerCase()
-    return q ? tareas.filter((t) => (t.numeroTarea || '').toLowerCase().includes(q)) : tareas
-  }, [tareas, filtro])
 
   const seleccionadas = tareas.filter((t) => seleccion.has(t.tareaId))
   const totalDosimetrosSel = seleccionadas.reduce((a, t) => a + t.totalDosimetros, 0)
@@ -53,10 +55,10 @@ export default function EliminarTareas() {
     })
   }
 
-  const seleccionarFiltradas = () => {
+  const seleccionarTodas = () => {
     setSeleccion((prev) => {
       const s = new Set(prev)
-      filtradas.filter((t) => t.eliminable).forEach((t) => s.add(t.tareaId))
+      tareas.filter((t) => t.eliminable).forEach((t) => s.add(t.tareaId))
       return s
     })
   }
@@ -70,7 +72,7 @@ export default function EliminarTareas() {
       toast.success(`Se eliminaron ${res.tareas} tareas; ${res.dosimetros} dosímetros quedaron como "Sin armar" (pendientes de armado).`)
       setConfirmar(false)
       limpiar()
-      recargar()
+      buscar()
     } catch (err) {
       toast.error(err.response?.data?.message || 'No se pudieron eliminar las tareas')
     } finally {
@@ -87,7 +89,7 @@ export default function EliminarTareas() {
         todos sus dosímetros disponibles. Solo Administrador.
       </Alert>
 
-      <div className="flex items-end gap-3 mt-4 flex-wrap">
+      <form onSubmit={buscar} className="flex items-end gap-3 mt-4 flex-wrap">
         <div className="flex-1 min-w-[180px]">
           <Input
             label="Buscar por número de tarea"
@@ -96,13 +98,16 @@ export default function EliminarTareas() {
             onChange={(e) => setFiltro(e.target.value)}
           />
         </div>
-        <Button variant="secondary" onClick={seleccionarFiltradas} disabled={cargando}>
-          Seleccionar filtradas
+        <Button type="submit" disabled={cargando}>
+          {cargando ? 'Buscando…' : 'Buscar'}
         </Button>
-        <Button variant="secondary" onClick={limpiar} disabled={seleccion.size === 0}>
+        <Button type="button" variant="secondary" onClick={seleccionarTodas} disabled={tareas.length === 0}>
+          Seleccionar todas
+        </Button>
+        <Button type="button" variant="secondary" onClick={limpiar} disabled={seleccion.size === 0}>
           Limpiar selección
         </Button>
-      </div>
+      </form>
 
       <div className="mt-4 border border-slate-200 rounded-lg overflow-hidden">
         <div className="max-h-80 overflow-auto">
@@ -117,7 +122,7 @@ export default function EliminarTareas() {
               </tr>
             </thead>
             <tbody>
-              {filtradas.map((t) => (
+              {tareas.map((t) => (
                 <tr
                   key={t.tareaId}
                   className={`border-t border-slate-100 ${t.eliminable ? 'cursor-pointer hover:bg-slate-50' : 'opacity-60'}`}
@@ -146,10 +151,14 @@ export default function EliminarTareas() {
                   </td>
                 </tr>
               ))}
-              {filtradas.length === 0 && (
+              {tareas.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-3 py-6 text-center text-slate-400">
-                    {cargando ? 'Cargando…' : 'Sin tareas para mostrar.'}
+                    {cargando
+                      ? 'Buscando…'
+                      : buscado
+                        ? 'No se encontraron tareas con ese número.'
+                        : 'Busca por número de tarea para ver resultados.'}
                   </td>
                 </tr>
               )}
