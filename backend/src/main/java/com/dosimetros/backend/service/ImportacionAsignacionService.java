@@ -228,11 +228,28 @@ public class ImportacionAsignacionService {
         if (dosimetros.isEmpty()) {
             throw new IllegalArgumentException("no existe un dosímetro con número " + numero);
         }
-        if (dosimetros.size() > 1) {
-            throw new IllegalArgumentException("el número " + numero
-                    + " está duplicado en el sistema; no se puede asignar por archivo");
+
+        String portaNombre = texto(row, COL_PORTA, fmt, "tipo de porta");
+
+        // Identidad por (número + tecnología): si el mismo número existe en varias
+        // tecnologías (ej. OSL y TLD), se desambigua por la porta indicada, que
+        // solo es compatible con una de ellas.
+        Dosimetro dosimetro;
+        if (dosimetros.size() == 1) {
+            dosimetro = dosimetros.get(0);
+        } else {
+            List<Dosimetro> compatibles = dosimetros.stream()
+                    .filter(d -> tipoPortaRepository
+                            .findByNombreAndTipoDosimetroId(portaNombre, d.getTipoDosimetro().getId())
+                            .isPresent())
+                    .toList();
+            if (compatibles.size() != 1) {
+                throw new IllegalArgumentException("el número " + numero
+                        + " existe en varias tecnologías y la porta '" + portaNombre
+                        + "' no permite determinar cuál");
+            }
+            dosimetro = compatibles.get(0);
         }
-        Dosimetro dosimetro = dosimetros.get(0);
 
         Cliente cliente = unico(
                 clienteRepository.findByRazonSocialIgnoreCaseAndActivoTrue(texto(row, COL_CLIENTE, fmt, "cliente")),
@@ -244,7 +261,6 @@ public class ImportacionAsignacionService {
                 empresaRepository.findByNombreIgnoreCaseAndActivaTrue(texto(row, COL_EMPRESA, fmt, "empresa")),
                 "empresa", texto(row, COL_EMPRESA, fmt, "empresa"));
 
-        String portaNombre = texto(row, COL_PORTA, fmt, "tipo de porta");
         TipoPorta tipoPorta = tipoPortaRepository
                 .findByNombreAndTipoDosimetroId(portaNombre, dosimetro.getTipoDosimetro().getId())
                 .orElseThrow(() -> new IllegalArgumentException(

@@ -155,7 +155,9 @@ def main():
             tareas.setdefault(tarea_num, None)
             if fasig and (tarea_num not in tarea_fecha or fasig < tarea_fecha[tarea_num]):
                 tarea_fecha[tarea_num] = fasig
-        dosimetros.setdefault(num, []).append(fila)
+        # Clave por (número + tecnología): un mismo número puede existir en OSL y
+        # TLD como dos dosímetros físicos distintos, así que NO se fusionan.
+        dosimetros.setdefault((num, tipo), []).append(fila)
 
     # Asignar ids
     ejecutivos.setdefault(EJEC_PLACEHOLDER, None)
@@ -165,7 +167,7 @@ def main():
         clientes[k] = i
     for i, k in enumerate(tareas, start=1):
         tareas[k] = i
-    dosim_id = {num: i for i, num in enumerate(dosimetros, start=1)}
+    dosim_id = {clave: i for i, clave in enumerate(dosimetros, start=1)}
 
     portas_usadas = sorted({f['porta'] for f in filas} | set(PORTAS_NUEVAS))
 
@@ -231,9 +233,9 @@ def main():
     # está asignado. Se usa el orden físico de la planilla, no la fecha de
     # asignación, porque las filas de stock (vuelta a bodega) no traen fecha.
     vals = []
-    for num, rows in dosimetros.items():
+    for (num, _tipo), rows in dosimetros.items():
         ult = rows[-1]
-        did = dosim_id[num]
+        did = dosim_id[(num, _tipo)]
         td = TD_VAR[ult['tipo']]
         pv = porta_var(ult['porta'])
         tarea_id = tareas.get(ult['tarea']) if ult['tarea'] else None
@@ -264,7 +266,7 @@ def main():
             continue
         if not f['fasig'] or not f['tri']:
             continue  # requeridos NOT NULL
-        did = dosim_id[f['num']]
+        did = dosim_id[(f['num'], f['tipo'])]
         cid = clientes[f['cli']]
         eid = ejecutivos.get(f['ej']) or ejecutivos[EJEC_PLACEHOLDER]
         pv = porta_var(f['porta'])

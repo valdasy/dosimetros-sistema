@@ -87,7 +87,8 @@ public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroServ
         int exitosas = 0;
         int fallidas = 0;
         int omitidas = 0;
-        Set<Integer> numerosEnArchivo = new HashSet<>();
+        // Clave por (número + tecnología): un mismo número puede existir en OSL y TLD.
+        Set<String> clavesEnArchivo = new HashSet<>();
 
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
@@ -108,18 +109,19 @@ public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroServ
                 try {
                     FilaParseada f = parseFila(row, formatter);
 
-                    // Mismo número repetido dentro del archivo.
-                    if (!numerosEnArchivo.add(f.numero())) {
+                    // Mismo número+tecnología repetido dentro del archivo.
+                    if (!clavesEnArchivo.add(f.numero() + "|" + f.tipoDosimetro().getId())) {
                         omitidas++;
-                        errores.add("Fila " + fila + ": número " + f.numero()
-                                + " repetido dentro del archivo (omitido)");
+                        errores.add("Fila " + fila + ": número " + f.numero() + " ("
+                                + f.tipoDosimetro().getNombre() + ") repetido dentro del archivo (omitido)");
                         continue;
                     }
-                    // Número ya existente en el sistema: no se duplica el dosímetro.
-                    if (dosimetroRepository.existsByNumero(f.numero())) {
+                    // Ya existe ese número en esa tecnología: no se duplica el dosímetro.
+                    if (dosimetroRepository.existsByNumeroAndTipoDosimetroId(
+                            f.numero(), f.tipoDosimetro().getId())) {
                         omitidas++;
-                        errores.add("Fila " + fila + ": número " + f.numero()
-                                + " ya existe en el sistema (omitido, no se duplica)");
+                        errores.add("Fila " + fila + ": número " + f.numero() + " ("
+                                + f.tipoDosimetro().getNombre() + ") ya existe en el sistema (omitido, no se duplica)");
                         continue;
                     }
 
@@ -172,7 +174,8 @@ public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroServ
         int sinCambios = 0;
         int fallidas = 0;
         int duplicados = 0;
-        Set<Integer> numerosEnArchivo = new HashSet<>();
+        // Clave por (número + tecnología): un mismo número puede existir en OSL y TLD.
+        Set<String> clavesEnArchivo = new HashSet<>();
 
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
@@ -193,14 +196,17 @@ public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroServ
                 try {
                     FilaParseada f = parseFila(row, formatter);
 
-                    if (!numerosEnArchivo.add(f.numero())) {
+                    if (!clavesEnArchivo.add(f.numero() + "|" + f.tipoDosimetro().getId())) {
                         fallidas++;
-                        errores.add("Fila " + fila + ": número " + f.numero()
-                                + " repetido dentro del archivo (omitido)");
+                        errores.add("Fila " + fila + ": número " + f.numero() + " ("
+                                + f.tipoDosimetro().getNombre() + ") repetido dentro del archivo (omitido)");
                         continue;
                     }
 
-                    List<Dosimetro> existentes = dosimetroRepository.findByNumeroOrderByIdAsc(f.numero());
+                    // Se busca por (número + tecnología): así un OSL y un TLD con el
+                    // mismo número se tratan por separado y no como duplicado.
+                    List<Dosimetro> existentes = dosimetroRepository
+                            .findByNumeroAndTipoDosimetroIdOrderByIdAsc(f.numero(), f.tipoDosimetro().getId());
 
                     if (existentes.isEmpty()) {
                         // No existe → se crea (upsert: insert).

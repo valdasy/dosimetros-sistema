@@ -115,6 +115,35 @@ class DosimetroRepositoryTest {
     }
 
     @Test
+    void osTldMismoNumeroNoSeCruzanNiSonDuplicados() {
+        TipoDosimetro tld = tipoDosimetro("TLD");
+        TipoDosimetro osl = tipoDosimetro("OSL");
+        TipoPorta gringo = tipoPorta("Porta gringo", tld);
+        TipoPorta portaOsl = tipoPorta("OSL", osl);
+
+        // Mismo número 500 en dos tecnologías = dos dosímetros físicos distintos.
+        dosimetro(500, tld, gringo, null, "disponible");
+        dosimetro(500, osl, portaOsl, null, "disponible");
+
+        // Buscar por (número + tecnología) devuelve solo el de esa tecnología.
+        List<Dosimetro> tldMatch = dosimetroRepository
+                .findByNumeroAndTipoDosimetroIdOrderByIdAsc(500, tld.getId());
+        List<Dosimetro> oslMatch = dosimetroRepository
+                .findByNumeroAndTipoDosimetroIdOrderByIdAsc(500, osl.getId());
+        assertEquals(1, tldMatch.size());
+        assertEquals(tld.getId(), tldMatch.get(0).getTipoDosimetro().getId());
+        assertEquals(1, oslMatch.size());
+        assertEquals(osl.getId(), oslMatch.get(0).getTipoDosimetro().getId());
+
+        // 500 OSL y 500 TLD NO son duplicados entre sí (distinta tecnología).
+        assertEquals(0, dosimetroRepository.findDuplicados().size());
+
+        // Dos del mismo número Y misma tecnología sí son duplicados reales.
+        dosimetro(500, tld, gringo, null, "disponible");
+        assertEquals(2, dosimetroRepository.findDuplicados().size());
+    }
+
+    @Test
     void matrizTareaPortaAgrupaPorTareaYPorta() {
         TipoDosimetro tld = tipoDosimetro("TLD");
         TipoPorta gringo = tipoPorta("Gringo", tld);

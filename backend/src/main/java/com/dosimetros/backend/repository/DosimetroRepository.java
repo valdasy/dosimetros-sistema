@@ -19,6 +19,10 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
 
     List<Dosimetro> findByNumeroOrderByIdAsc(Integer numero);
 
+    // Identidad real del dosímetro: (número + tecnología). Un mismo número puede
+    // existir en OSL y en TLD como dos dosímetros físicos distintos.
+    List<Dosimetro> findByNumeroAndTipoDosimetroIdOrderByIdAsc(Integer numero, Integer tipoDosimetroId);
+
     // #7: dosímetros de una tarea ordenados por bandeja y slot (mapa de armado).
     List<Dosimetro> findByTareaIdOrderByNumeroBandejaAscSlotBandejaAsc(Integer tareaId);
 
@@ -38,6 +42,10 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
     List<Object[]> resumenArmadoPorTarea();
 
     boolean existsByNumero(Integer numero);
+
+    // ¿Existe ya un dosímetro con ese número EN esa tecnología? (para no duplicar
+    // al importar, permitiendo el mismo número en OSL y TLD).
+    boolean existsByNumeroAndTipoDosimetroId(Integer numero, Integer tipoDosimetroId);
 
     // Dosímetros de una tarea (para eliminarla en bloque).
     List<Dosimetro> findByTareaId(Integer tareaId);
@@ -126,13 +134,18 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
     @Query("SELECT d FROM Dosimetro d WHERE d.id = :id")
     Optional<Dosimetro> findByIdParaAsignar(@Param("id") Integer id);
 
-    // HU #9: dosímetros cuyo número físico se repite (más de un id con el mismo numero)
+    // HU #9: dosímetros realmente duplicados = mismo número Y misma tecnología en
+    // más de una fila. Un mismo número en OSL y en TLD NO es duplicado (son dos
+    // dosímetros físicos distintos), por eso se compara también la tecnología.
     @Query("""
         SELECT d FROM Dosimetro d
-        WHERE d.numero IN (
-            SELECT d2.numero FROM Dosimetro d2 GROUP BY d2.numero HAVING COUNT(d2) > 1
+        WHERE EXISTS (
+            SELECT 1 FROM Dosimetro d2
+            WHERE d2.numero = d.numero
+              AND d2.tipoDosimetro.id = d.tipoDosimetro.id
+              AND d2.id <> d.id
         )
-        ORDER BY d.numero ASC, d.id ASC
+        ORDER BY d.numero ASC, d.tipoDosimetro.id ASC, d.id ASC
     """)
     List<Dosimetro> findDuplicados();
 
