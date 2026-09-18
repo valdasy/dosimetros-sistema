@@ -134,37 +134,44 @@ class DosimetroServiceTest {
     }
 
     @Test
-    void eliminarTareasBorraTareaYSusDosimetros() {
+    void eliminarTareasDesarmaLosDosimetrosYBorraLaTarea() {
         when(tareaRepository.findById(7)).thenReturn(Optional.of(tarea(7, "50")));
-        Dosimetro d1 = dosimetro("disponible");
-        Dosimetro d2 = dosimetro("disponible"); d2.setId(2);
+        Dosimetro d1 = dosimetro("disponible"); d1.setTarea(tarea(7, "50")); d1.setNumeroBandeja(3); d1.setSlotBandeja(9);
+        Dosimetro d2 = dosimetro("disponible"); d2.setId(2); d2.setTarea(tarea(7, "50"));
         when(dosimetroRepository.findByTareaId(7)).thenReturn(List.of(d1, d2));
-        when(asignacionRepository.contarAsignacionesDeTarea(7)).thenReturn(0L);
+        when(asignacionRepository.contarAsignacionesEnTarea(7)).thenReturn(0L);
+        when(dosimetroRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
 
         EliminarTareasResponse resp = service.eliminarTareas(List.of(7));
 
         assertEquals(1, resp.getTareas());
         assertEquals(2, resp.getDosimetros());
-        verify(dosimetroRepository).deleteAll(any());
+        // Los dosímetros se conservan pero quedan desarmados (sin tarea/bandeja/slot).
+        assertEquals(null, d1.getTarea());
+        assertEquals(null, d1.getNumeroBandeja());
+        assertEquals(null, d1.getSlotBandeja());
+        assertEquals(null, d2.getTarea());
+        verify(dosimetroRepository).saveAll(any());
+        verify(dosimetroRepository, never()).deleteAll(any()); // NO se borran dosímetros
         verify(tareaRepository).deleteById(7);
     }
 
     @Test
-    void eliminarTareasFallaSiTieneDosimetroNoDisponible() {
+    void eliminarTareasFallaSiTieneDosimetroAsignado() {
         when(tareaRepository.findById(7)).thenReturn(Optional.of(tarea(7, "50")));
         when(dosimetroRepository.findByTareaId(7)).thenReturn(List.of(dosimetro("asignado")));
-        when(asignacionRepository.contarAsignacionesDeTarea(7)).thenReturn(0L);
+        when(asignacionRepository.contarAsignacionesEnTarea(7)).thenReturn(0L);
 
         assertThrows(IllegalArgumentException.class, () -> service.eliminarTareas(List.of(7)));
         verify(tareaRepository, never()).deleteById(any());
-        verify(dosimetroRepository, never()).deleteAll(any());
+        verify(dosimetroRepository, never()).saveAll(any());
     }
 
     @Test
-    void eliminarTareasFallaSiTieneHistorialDeAsignacion() {
+    void eliminarTareasFallaSiSeAsignoEnLaTarea() {
         when(tareaRepository.findById(7)).thenReturn(Optional.of(tarea(7, "50")));
         when(dosimetroRepository.findByTareaId(7)).thenReturn(List.of(dosimetro("disponible")));
-        when(asignacionRepository.contarAsignacionesDeTarea(7)).thenReturn(3L);
+        when(asignacionRepository.contarAsignacionesEnTarea(7)).thenReturn(3L);
 
         assertThrows(IllegalArgumentException.class, () -> service.eliminarTareas(List.of(7)));
         verify(tareaRepository, never()).deleteById(any());

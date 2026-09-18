@@ -133,17 +133,16 @@ public interface AsignacionRepository extends JpaRepository<Asignacion, Integer>
             @Param("hastaSlot") Integer hastaSlot
     );
 
-    // Cuántas asignaciones referencian una tarea (por el dosímetro o directamente).
-    // Se usa para NO permitir eliminar tareas con historial de asignación.
-    @Query("SELECT COUNT(a) FROM Asignacion a WHERE a.dosimetro.tarea.id = :tareaId OR a.tarea.id = :tareaId")
-    long contarAsignacionesDeTarea(@Param("tareaId") Integer tareaId);
+    // Cuántas asignaciones se hicieron EN esta tarea (a.tarea apunta a ella). Es
+    // lo que impide eliminarla: si se asignó en la tarea, borrarla perdería ese
+    // dato del historial. El historial pasado del dosímetro (por otras tareas) no
+    // cuenta, porque al eliminar la tarea el dosímetro se conserva.
+    @Query("SELECT COUNT(a) FROM Asignacion a WHERE a.tarea.id = :tareaId")
+    long contarAsignacionesEnTarea(@Param("tareaId") Integer tareaId);
 
-    // Ids de tareas con al menos una asignación (por dosímetro o referencia directa).
-    @Query("SELECT DISTINCT a.dosimetro.tarea.id FROM Asignacion a WHERE a.dosimetro.tarea IS NOT NULL")
-    List<Integer> tareaIdsConAsignacionPorDosimetro();
-
+    // Ids de tareas donde se hizo al menos una asignación (para el listado).
     @Query("SELECT DISTINCT a.tarea.id FROM Asignacion a WHERE a.tarea IS NOT NULL")
-    List<Integer> tareaIdsReferenciadasDirecto();
+    List<Integer> tareaIdsConAsignaciones();
 
     // HU #17: KPIs de asignaciones (todos opcionalmente filtrados por trimestre)
     @Query("SELECT COUNT(a) FROM Asignacion a WHERE (:trimestre IS NULL OR a.trimestre = :trimestre)")

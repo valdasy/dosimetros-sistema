@@ -321,9 +321,10 @@ public class DosimetroService {
      * disponibles y ninguno tiene historial de asignación (protege datos reales).
      */
     public List<TareaEliminableResponse> listarTareasEliminables() {
-        Set<Integer> conHistorial = new HashSet<>();
-        conHistorial.addAll(asignacionRepository.tareaIdsConAsignacionPorDosimetro());
-        conHistorial.addAll(asignacionRepository.tareaIdsReferenciadasDirecto());
+        // Tareas donde se hizo alguna asignación: NO se pueden borrar (perderían
+        // ese dato del historial). El historial pasado del dosímetro no importa,
+        // porque al eliminar la tarea el dosímetro se conserva (solo se desarma).
+        Set<Integer> conAsignaciones = new HashSet<>(asignacionRepository.tareaIdsConAsignaciones());
 
         List<TareaEliminableResponse> out = new ArrayList<>();
         for (Object[] r : dosimetroRepository.conteoDosimetrosPorTarea()) {
@@ -332,13 +333,13 @@ public class DosimetroService {
             int total = ((Number) r[2]).intValue();
             int disponibles = ((Number) r[3]).intValue();
             boolean todosDisponibles = disponibles == total;
-            boolean tieneHistorial = conHistorial.contains(tareaId);
-            boolean eliminable = todosDisponibles && !tieneHistorial;
+            boolean tieneAsignaciones = conAsignaciones.contains(tareaId);
+            boolean eliminable = todosDisponibles && !tieneAsignaciones;
             String motivo = null;
-            if (tieneHistorial) {
-                motivo = "Tiene historial de asignación";
+            if (tieneAsignaciones) {
+                motivo = "Se hicieron asignaciones en esta tarea";
             } else if (!todosDisponibles) {
-                motivo = "Tiene " + (total - disponibles) + " dosímetro(s) no disponibles";
+                motivo = "Tiene " + (total - disponibles) + " dosímetro(s) asignados";
             }
             out.add(new TareaEliminableResponse(tareaId, numero, total, disponibles, eliminable, motivo));
         }
@@ -346,9 +347,11 @@ public class DosimetroService {
     }
 
     /**
-     * Elimina por completo las tareas indicadas y sus dosímetros. Valida TODAS
-     * antes de borrar (todo o nada): solo procede si cada tarea tiene únicamente
-     * dosímetros disponibles y sin historial de asignación.
+     * Elimina las tareas indicadas (la agrupación/armado), CONSERVANDO los
+     * dosímetros y su historial: sus dosímetros se "desarman" (tarea, bandeja y
+     * slot quedan vacíos) y siguen disponibles. Valida TODAS antes de aplicar
+     * (todo o nada): solo procede si en la tarea no se hizo ninguna asignación y
+     * todos sus dosímetros están disponibles.
      */
     @Transactional
     public EliminarTareasResponse eliminarTareas(List<Integer> tareaIds) {
@@ -361,24 +364,35 @@ public class DosimetroService {
                     .orElseThrow(() -> new ResourceNotFoundException("Tarea no encontrada con id: " + id));
             boolean todosDisponibles = dosimetroRepository.findByTareaId(id).stream()
                     .allMatch(d -> "disponible".equalsIgnoreCase(d.getEstado()));
-            long asignaciones = asignacionRepository.contarAsignacionesDeTarea(id);
-            if (!todosDisponibles || asignaciones > 0) {
+            long asignacionesEnTarea = asignacionRepository.contarAsignacionesEnTarea(id);
+            if (asignacionesEnTarea > 0) {
                 throw new IllegalArgumentException("La tarea " + t.getNumeroTarea()
-                        + " no se puede eliminar: tiene dosímetros asignados o con historial."
+                        + " no se puede eliminar: se hicieron asignaciones en ella."
+                        + " No se eliminó ninguna.");
+            }
+            if (!todosDisponibles) {
+                throw new IllegalArgumentException("La tarea " + t.getNumeroTarea()
+                        + " no se puede eliminar: tiene dosímetros asignados."
                         + " No se eliminó ninguna.");
             }
         }
-        // 2) Borrado: primero los dosímetros (llave foránea) y luego la tarea.
+        // 2) Desarmar los dosímetros (conservándolos) y luego borrar la tarea.
         int tareas = 0;
         int dosimetros = 0;
         for (Integer id : tareaIds) {
             List<Dosimetro> ds = dosimetroRepository.findByTareaId(id);
-            dosimetroRepository.deleteAll(ds);
+            for (Dosimetro d : ds) {
+                d.setTarea(null);
+                d.setNumeroBandeja(null);
+                d.setSlotBandeja(null);
+                // El dosímetro queda disponible / sin armar; su historial se mantiene.
+            }
+            dosimetroRepository.saveAll(ds);
+            dosimetroRepository.flush(); // aplica el desarmado antes de borrar la tarea (FK)
             dosimetros += ds.size();
             tareaRepository.deleteById(id);
             tareas++;
         }
-        dosimetroRepository.flush();
         return new EliminarTareasResponse(tareas, dosimetros);
     }
 

@@ -67,7 +67,7 @@ export default function EliminarTareas() {
     setEliminando(true)
     try {
       const res = await eliminarTareas([...seleccion])
-      toast.success(`Se eliminaron ${res.tareas} tareas y ${res.dosimetros} dosímetros.`)
+      toast.success(`Se eliminaron ${res.tareas} tareas; ${res.dosimetros} dosímetros quedaron disponibles y sin armar.`)
       setConfirmar(false)
       limpiar()
       recargar()
@@ -81,9 +81,10 @@ export default function EliminarTareas() {
   return (
     <Card title="Eliminar tareas (corrección de carga)">
       <Alert type="info">
-        Elimina por completo tareas subidas por error <b>y sus dosímetros</b>. Solo se pueden
-        eliminar tareas con <b>todos</b> sus dosímetros disponibles y <b>sin historial</b> de
-        asignación. El borrado es <b>permanente</b>. Solo Administrador.
+        Elimina la <b>tarea</b> (la agrupación/armado). Los <b>dosímetros se conservan</b>: quedan
+        disponibles y <b>sin armar</b>, con su historial intacto. Solo se pueden eliminar tareas
+        donde <b>no se hayan hecho asignaciones</b> y con todos sus dosímetros disponibles.
+        Solo Administrador.
       </Alert>
 
       <div className="flex items-end gap-3 mt-4 flex-wrap">
@@ -169,8 +170,8 @@ export default function EliminarTareas() {
       {confirmar && (
         <Modal title="Confirmar eliminación" onClose={() => setConfirmar(false)}>
           <p className="text-sm text-ink">
-            Se eliminarán <b>{seleccion.size} tareas</b> y sus <b>{totalDosimetrosSel} dosímetros</b>
-            {' '}por completo:
+            Se eliminarán <b>{seleccion.size} tareas</b>. Sus <b>{totalDosimetrosSel} dosímetros</b>
+            {' '}quedarán <b>disponibles y sin armar</b> (se conserva su historial):
           </p>
           <ul className="text-sm text-slate-600 mt-2 max-h-40 overflow-auto list-disc pl-5">
             {seleccionadas.map((t) => (
