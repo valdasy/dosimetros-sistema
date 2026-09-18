@@ -141,16 +141,21 @@ class DosimetroServiceTest {
         when(dosimetroRepository.findByTareaId(7)).thenReturn(List.of(d1, d2));
         when(asignacionRepository.contarAsignacionesEnTarea(7)).thenReturn(0L);
         when(dosimetroRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        TipoPorta sinArmar = porta(99, 2); // porta "Sin armar" de la tecnología (id 2)
+        when(tipoPortaRepository.findSinArmarByTipoDosimetro(2)).thenReturn(List.of(sinArmar));
 
         EliminarTareasResponse resp = service.eliminarTareas(List.of(7));
 
         assertEquals(1, resp.getTareas());
         assertEquals(2, resp.getDosimetros());
-        // Los dosímetros se conservan pero quedan desarmados (sin tarea/bandeja/slot).
+        // Los dosímetros se conservan pero quedan desarmados (sin tarea/bandeja/slot)
+        // y con la porta "Sin armar".
         assertEquals(null, d1.getTarea());
         assertEquals(null, d1.getNumeroBandeja());
         assertEquals(null, d1.getSlotBandeja());
+        assertEquals(99, d1.getTipoPorta().getId());
         assertEquals(null, d2.getTarea());
+        assertEquals(99, d2.getTipoPorta().getId());
         verify(dosimetroRepository).saveAll(any());
         verify(dosimetroRepository, never()).deleteAll(any()); // NO se borran dosímetros
         verify(tareaRepository).deleteById(7);

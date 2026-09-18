@@ -377,6 +377,10 @@ public class DosimetroService {
             }
         }
         // 2) Desarmar los dosímetros (conservándolos) y luego borrar la tarea.
+        // "Desarmar" = quitar tarea/bandeja/slot y dejar la porta en "Sin armar"
+        // de su tecnología, para que queden como pendientes de armado (no como
+        // stock listo). Su historial de asignación se mantiene intacto.
+        Map<Integer, TipoPorta> sinArmarPorTipo = new java.util.HashMap<>();
         int tareas = 0;
         int dosimetros = 0;
         for (Integer id : tareaIds) {
@@ -385,7 +389,7 @@ public class DosimetroService {
                 d.setTarea(null);
                 d.setNumeroBandeja(null);
                 d.setSlotBandeja(null);
-                // El dosímetro queda disponible / sin armar; su historial se mantiene.
+                d.setTipoPorta(portaSinArmar(d, sinArmarPorTipo));
             }
             dosimetroRepository.saveAll(ds);
             dosimetroRepository.flush(); // aplica el desarmado antes de borrar la tarea (FK)
@@ -394,6 +398,18 @@ public class DosimetroService {
             tareas++;
         }
         return new EliminarTareasResponse(tareas, dosimetros);
+    }
+
+    // Devuelve la porta "Sin armar" de la tecnología del dosímetro (cacheada por
+    // tipo). Si esa tecnología no tiene una porta "Sin armar", deja la porta en
+    // null (sin porta también cuenta como "sin armar").
+    private TipoPorta portaSinArmar(Dosimetro d, Map<Integer, TipoPorta> cache) {
+        Integer tipoId = d.getTipoDosimetro() != null ? d.getTipoDosimetro().getId() : null;
+        if (tipoId == null) return null;
+        return cache.computeIfAbsent(tipoId, t -> {
+            List<TipoPorta> sinArmar = tipoPortaRepository.findSinArmarByTipoDosimetro(t);
+            return sinArmar.isEmpty() ? null : sinArmar.get(0);
+        });
     }
 
     /**
