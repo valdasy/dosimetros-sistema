@@ -256,19 +256,35 @@ export default function MisDosimetros() {
                   grupo puntual o todos juntos.
                 </p>
                 <div className="divide-y divide-mist/60">
-                  {grupos.map((g) => (
+                  {grupos.map((g) => {
+                    // Links de Trello del grupo (normalmente uno solo, compartido).
+                    const links = [...new Set(g.items.map((i) => i.linkTrello).filter(Boolean))]
+                    return (
                     <div key={g.fecha} className="py-2.5">
                       <div className="flex items-center justify-between gap-3">
-                        <button
-                          type="button"
-                          onClick={() => toggleGrupo(g.fecha)}
-                          className="text-sm text-left hover:underline"
-                        >
-                          <span className="font-medium text-ink">
-                            {grupoAbierto === g.fecha ? '▾' : '▸'} {g.fecha}
-                          </span>
-                          <span className="text-slate-500"> · {g.cantidad} dosímetros</span>
-                        </button>
+                        <div className="flex items-center gap-3 min-w-0 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleGrupo(g.fecha)}
+                            className="text-sm text-left hover:underline"
+                          >
+                            <span className="font-medium text-ink">
+                              {grupoAbierto === g.fecha ? '▾' : '▸'} {g.fecha}
+                            </span>
+                            <span className="text-slate-500"> · {g.cantidad} dosímetros</span>
+                          </button>
+                          {links.map((url, i) => (
+                            <a
+                              key={i}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-steel hover:underline whitespace-nowrap"
+                            >
+                              {links.length > 1 ? `Trello ${i + 1} ↗` : 'Trello ↗'}
+                            </a>
+                          ))}
+                        </div>
                         <button
                           type="button"
                           onClick={() => exportarLista(g.items, `${g.fecha}`)}
@@ -310,7 +326,8 @@ export default function MisDosimetros() {
                         </div>
                       )}
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </>
             )}
