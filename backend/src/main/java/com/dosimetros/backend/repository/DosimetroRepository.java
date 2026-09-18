@@ -39,6 +39,21 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
 
     boolean existsByNumero(Integer numero);
 
+    // Dosímetros de una tarea (para eliminarla en bloque).
+    List<Dosimetro> findByTareaId(Integer tareaId);
+
+    // Conteo por tarea: total de dosímetros y cuántos están disponibles.
+    // Devuelve [tareaId, numeroTarea, total, disponibles].
+    @Query("""
+        SELECT d.tarea.id, d.tarea.numeroTarea, COUNT(d),
+               SUM(CASE WHEN d.estado = 'disponible' THEN 1 ELSE 0 END)
+        FROM Dosimetro d
+        WHERE d.tarea IS NOT NULL
+        GROUP BY d.tarea.id, d.tarea.numeroTarea
+        ORDER BY d.tarea.numeroTarea ASC
+    """)
+    List<Object[]> conteoDosimetrosPorTarea();
+
     // HU buscar: solo dosímetros que ya tienen al menos una asignación (fueron asignados)
     @Query("""
         SELECT d FROM Dosimetro d

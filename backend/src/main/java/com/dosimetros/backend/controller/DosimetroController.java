@@ -12,7 +12,9 @@ import com.dosimetros.backend.dto.dosimetro.EditarEspecificacionesRequest;
 import com.dosimetros.backend.dto.dosimetro.MatrizCeldaResponse;
 import com.dosimetros.backend.dto.dosimetro.PortaDisponibleResponse;
 import com.dosimetros.backend.dto.dosimetro.TareaArmadoResponse;
+import com.dosimetros.backend.dto.tarea.EliminarTareasResponse;
 import com.dosimetros.backend.dto.tarea.TareaDisponibleResponse;
+import com.dosimetros.backend.dto.tarea.TareaEliminableResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import com.dosimetros.backend.service.AsignacionService;
@@ -227,5 +229,20 @@ public class DosimetroController {
             @RequestParam(required = false) String observacion) {
         service.darDeBaja(id, observacion);
         return ResponseEntity.noContent().build();
+    }
+
+    // Corrección de carga — lista de tareas con conteos y si son eliminables.
+    @GetMapping("/tareas/eliminables")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<TareaEliminableResponse>> tareasEliminables() {
+        return ResponseEntity.ok(service.listarTareasEliminables());
+    }
+
+    // Corrección de carga — elimina tareas y sus dosímetros (solo si están
+    // 100% disponibles y sin historial). Solo Administrador; borrado permanente.
+    @PostMapping("/tareas/eliminar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<EliminarTareasResponse> eliminarTareas(@RequestBody List<Integer> tareaIds) {
+        return ResponseEntity.ok(service.eliminarTareas(tareaIds));
     }
 }

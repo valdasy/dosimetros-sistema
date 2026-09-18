@@ -13,6 +13,7 @@ import {
 } from '../api/endpoints'
 import { Card, Select, Badge, Button, Loading, EmptyState, Alert, Modal } from '../components/ui'
 import LiberacionMasiva from '../components/LiberacionMasiva'
+import EliminarTareas from '../components/EliminarTareas'
 import { useToast } from '../components/Toast'
 
 const estadoColor = { disponible: 'green', asignado: 'blue', baja: 'red', dañado: 'amber' }
@@ -358,6 +359,9 @@ export default function Stock() {
 
       {/* Corrección de asignaciones (liberar) — solo Administrador */}
       <LiberacionMasiva />
+
+      {/* Eliminar tareas subidas por error — solo Administrador */}
+      <EliminarTareas />
 
       {/* Filtros */}
       <Card title="Filtros">

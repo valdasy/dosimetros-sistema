@@ -72,6 +72,11 @@ export const darDeBaja = (id, observacion) =>
   client.patch(`/dosimetros/${id}/baja`, null, { params: { observacion } }).then((r) => r.data)
 export const liberarDosimetro = (id) =>
   client.patch(`/dosimetros/${id}/liberar`).then((r) => r.data)
+// Corrección de carga: listar tareas eliminables y eliminarlas (con sus dosímetros).
+export const getTareasEliminables = () =>
+  client.get('/dosimetros/tareas/eliminables').then((r) => r.data)
+export const eliminarTareas = (tareaIds) =>
+  client.post('/dosimetros/tareas/eliminar', tareaIds).then((r) => r.data)
 export const marcarDanado = (id) =>
   client.patch(`/dosimetros/${id}/danado`).then((r) => r.data)
 export const marcarBueno = (id) =>

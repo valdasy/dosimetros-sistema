@@ -2,7 +2,9 @@ package com.dosimetros.backend.service;
 
 import com.dosimetros.backend.dto.dosimetro.ActualizarTipoPortaRangoResponse;
 import com.dosimetros.backend.dto.dosimetro.DosimetroResponse;
+import com.dosimetros.backend.dto.tarea.EliminarTareasResponse;
 import com.dosimetros.backend.entity.Dosimetro;
+import com.dosimetros.backend.entity.Tarea;
 import com.dosimetros.backend.entity.TipoDosimetro;
 import com.dosimetros.backend.entity.TipoPorta;
 import com.dosimetros.backend.repository.AsignacionRepository;
@@ -27,12 +29,21 @@ class DosimetroServiceTest {
 
     private final DosimetroRepository dosimetroRepository = mock(DosimetroRepository.class);
     private final TipoPortaRepository tipoPortaRepository = mock(TipoPortaRepository.class);
+    private final TareaRepository tareaRepository = mock(TareaRepository.class);
+    private final AsignacionRepository asignacionRepository = mock(AsignacionRepository.class);
     private final DosimetroService service = new DosimetroService(
             dosimetroRepository,
             mock(TipoDosimetroRepository.class),
             tipoPortaRepository,
-            mock(TareaRepository.class),
-            mock(AsignacionRepository.class));
+            tareaRepository,
+            asignacionRepository);
+
+    private Tarea tarea(int id, String numero) {
+        Tarea t = new Tarea();
+        t.setId(id);
+        t.setNumeroTarea(numero);
+        return t;
+    }
 
     private TipoPorta porta(int id, int tipoDosimetroId) {
         TipoDosimetro td = new TipoDosimetro();
@@ -120,5 +131,42 @@ class DosimetroServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.armarSeleccion(List.of(1), 5));
         verify(dosimetroRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void eliminarTareasBorraTareaYSusDosimetros() {
+        when(tareaRepository.findById(7)).thenReturn(Optional.of(tarea(7, "50")));
+        Dosimetro d1 = dosimetro("disponible");
+        Dosimetro d2 = dosimetro("disponible"); d2.setId(2);
+        when(dosimetroRepository.findByTareaId(7)).thenReturn(List.of(d1, d2));
+        when(asignacionRepository.contarAsignacionesDeTarea(7)).thenReturn(0L);
+
+        EliminarTareasResponse resp = service.eliminarTareas(List.of(7));
+
+        assertEquals(1, resp.getTareas());
+        assertEquals(2, resp.getDosimetros());
+        verify(dosimetroRepository).deleteAll(any());
+        verify(tareaRepository).deleteById(7);
+    }
+
+    @Test
+    void eliminarTareasFallaSiTieneDosimetroNoDisponible() {
+        when(tareaRepository.findById(7)).thenReturn(Optional.of(tarea(7, "50")));
+        when(dosimetroRepository.findByTareaId(7)).thenReturn(List.of(dosimetro("asignado")));
+        when(asignacionRepository.contarAsignacionesDeTarea(7)).thenReturn(0L);
+
+        assertThrows(IllegalArgumentException.class, () -> service.eliminarTareas(List.of(7)));
+        verify(tareaRepository, never()).deleteById(any());
+        verify(dosimetroRepository, never()).deleteAll(any());
+    }
+
+    @Test
+    void eliminarTareasFallaSiTieneHistorialDeAsignacion() {
+        when(tareaRepository.findById(7)).thenReturn(Optional.of(tarea(7, "50")));
+        when(dosimetroRepository.findByTareaId(7)).thenReturn(List.of(dosimetro("disponible")));
+        when(asignacionRepository.contarAsignacionesDeTarea(7)).thenReturn(3L);
+
+        assertThrows(IllegalArgumentException.class, () -> service.eliminarTareas(List.of(7)));
+        verify(tareaRepository, never()).deleteById(any());
     }
 }

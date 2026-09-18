@@ -11,7 +11,9 @@ import com.dosimetros.backend.dto.dosimetro.EditarEspecificacionesRequest;
 import com.dosimetros.backend.dto.dosimetro.MatrizCeldaResponse;
 import com.dosimetros.backend.dto.dosimetro.PortaDisponibleResponse;
 import com.dosimetros.backend.dto.dosimetro.TareaArmadoResponse;
+import com.dosimetros.backend.dto.tarea.EliminarTareasResponse;
 import com.dosimetros.backend.dto.tarea.TareaDisponibleResponse;
+import com.dosimetros.backend.dto.tarea.TareaEliminableResponse;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -35,9 +37,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class DosimetroService {
@@ -309,6 +313,73 @@ public class DosimetroService {
         dosimetro.setEstado("baja");
         dosimetro.setObservacion(observacion);
         dosimetroRepository.save(dosimetro);
+    }
+
+    /**
+     * Lista las tareas con su conteo de dosímetros (total y disponibles) y si son
+     * eliminables. Una tarea es eliminable solo si TODOS sus dosímetros están
+     * disponibles y ninguno tiene historial de asignación (protege datos reales).
+     */
+    public List<TareaEliminableResponse> listarTareasEliminables() {
+        Set<Integer> conHistorial = new HashSet<>();
+        conHistorial.addAll(asignacionRepository.tareaIdsConAsignacionPorDosimetro());
+        conHistorial.addAll(asignacionRepository.tareaIdsReferenciadasDirecto());
+
+        List<TareaEliminableResponse> out = new ArrayList<>();
+        for (Object[] r : dosimetroRepository.conteoDosimetrosPorTarea()) {
+            Integer tareaId = (Integer) r[0];
+            String numero = (String) r[1];
+            int total = ((Number) r[2]).intValue();
+            int disponibles = ((Number) r[3]).intValue();
+            boolean todosDisponibles = disponibles == total;
+            boolean tieneHistorial = conHistorial.contains(tareaId);
+            boolean eliminable = todosDisponibles && !tieneHistorial;
+            String motivo = null;
+            if (tieneHistorial) {
+                motivo = "Tiene historial de asignación";
+            } else if (!todosDisponibles) {
+                motivo = "Tiene " + (total - disponibles) + " dosímetro(s) no disponibles";
+            }
+            out.add(new TareaEliminableResponse(tareaId, numero, total, disponibles, eliminable, motivo));
+        }
+        return out;
+    }
+
+    /**
+     * Elimina por completo las tareas indicadas y sus dosímetros. Valida TODAS
+     * antes de borrar (todo o nada): solo procede si cada tarea tiene únicamente
+     * dosímetros disponibles y sin historial de asignación.
+     */
+    @Transactional
+    public EliminarTareasResponse eliminarTareas(List<Integer> tareaIds) {
+        if (tareaIds == null || tareaIds.isEmpty()) {
+            throw new IllegalArgumentException("Debes seleccionar al menos una tarea");
+        }
+        // 1) Validación previa de TODAS las tareas (todo o nada).
+        for (Integer id : tareaIds) {
+            Tarea t = tareaRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Tarea no encontrada con id: " + id));
+            boolean todosDisponibles = dosimetroRepository.findByTareaId(id).stream()
+                    .allMatch(d -> "disponible".equalsIgnoreCase(d.getEstado()));
+            long asignaciones = asignacionRepository.contarAsignacionesDeTarea(id);
+            if (!todosDisponibles || asignaciones > 0) {
+                throw new IllegalArgumentException("La tarea " + t.getNumeroTarea()
+                        + " no se puede eliminar: tiene dosímetros asignados o con historial."
+                        + " No se eliminó ninguna.");
+            }
+        }
+        // 2) Borrado: primero los dosímetros (llave foránea) y luego la tarea.
+        int tareas = 0;
+        int dosimetros = 0;
+        for (Integer id : tareaIds) {
+            List<Dosimetro> ds = dosimetroRepository.findByTareaId(id);
+            dosimetroRepository.deleteAll(ds);
+            dosimetros += ds.size();
+            tareaRepository.deleteById(id);
+            tareas++;
+        }
+        dosimetroRepository.flush();
+        return new EliminarTareasResponse(tareas, dosimetros);
     }
 
     /**

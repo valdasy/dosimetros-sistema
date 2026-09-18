@@ -133,6 +133,18 @@ public interface AsignacionRepository extends JpaRepository<Asignacion, Integer>
             @Param("hastaSlot") Integer hastaSlot
     );
 
+    // Cuántas asignaciones referencian una tarea (por el dosímetro o directamente).
+    // Se usa para NO permitir eliminar tareas con historial de asignación.
+    @Query("SELECT COUNT(a) FROM Asignacion a WHERE a.dosimetro.tarea.id = :tareaId OR a.tarea.id = :tareaId")
+    long contarAsignacionesDeTarea(@Param("tareaId") Integer tareaId);
+
+    // Ids de tareas con al menos una asignación (por dosímetro o referencia directa).
+    @Query("SELECT DISTINCT a.dosimetro.tarea.id FROM Asignacion a WHERE a.dosimetro.tarea IS NOT NULL")
+    List<Integer> tareaIdsConAsignacionPorDosimetro();
+
+    @Query("SELECT DISTINCT a.tarea.id FROM Asignacion a WHERE a.tarea IS NOT NULL")
+    List<Integer> tareaIdsReferenciadasDirecto();
+
     // HU #17: KPIs de asignaciones (todos opcionalmente filtrados por trimestre)
     @Query("SELECT COUNT(a) FROM Asignacion a WHERE (:trimestre IS NULL OR a.trimestre = :trimestre)")
     long contarAsignaciones(@Param("trimestre") String trimestre);
