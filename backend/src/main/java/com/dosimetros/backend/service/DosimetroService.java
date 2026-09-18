@@ -307,6 +307,23 @@ public class DosimetroService {
         return toResponse(dosimetroRepository.save(dosimetro));
     }
 
+    // Marca un dosímetro como extraviado (no se encuentra físicamente): sale del
+    // stock y no se puede asignar, pero conserva su historial. Se recupera solo
+    // si reaparece en una carga de "Actualizar stock". No aplica a dados de baja.
+    public DosimetroResponse marcarExtraviado(Integer id, String observacion) {
+        Dosimetro dosimetro = dosimetroRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dosímetro no encontrado con id: " + id));
+        if ("baja".equalsIgnoreCase(dosimetro.getEstado())) {
+            throw new IllegalArgumentException(
+                    "El dosímetro está dado de baja; no aplica marcarlo como extraviado");
+        }
+        dosimetro.setEstado("extraviado");
+        if (observacion != null && !observacion.isBlank()) {
+            dosimetro.setObservacion(observacion);
+        }
+        return toResponse(dosimetroRepository.save(dosimetro));
+    }
+
     public void darDeBaja(Integer id, String observacion) {
         Dosimetro dosimetro = dosimetroRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Dosímetro no encontrado con id: " + id));

@@ -223,11 +223,14 @@ public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroServ
                         String estado = d.getEstado();
                         boolean dadoDeBaja = "baja".equalsIgnoreCase(estado);
                         boolean estabaAsignado = "asignado".equalsIgnoreCase(estado);
+                        boolean estabaExtraviado = "extraviado".equalsIgnoreCase(estado);
 
                         boolean armadoEnOtraTarea = d.getTarea() != null && f.tarea() != null
                                 && !Objects.equals(d.getTarea().getId(), f.tarea().getId());
 
-                        if (mismoArmado(d, f)) {
+                        // Un extraviado que reaparece en la carga siempre se procesa
+                        // (aunque el armado coincida) para recuperarlo a disponible.
+                        if (mismoArmado(d, f) && !estabaExtraviado) {
                             sinCambios++;
                         } else if (dadoDeBaja) {
                             // Un dosímetro dado de baja no se reactiva por archivo;
@@ -235,7 +238,7 @@ public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroServ
                             fallidas++;
                             errores.add("Fila " + fila + ": número " + f.numero()
                                     + " está dado de baja; no se actualiza su armado por archivo");
-                        } else if (!estabaAsignado && armadoEnOtraTarea) {
+                        } else if (!estabaAsignado && !estabaExtraviado && armadoEnOtraTarea) {
                             // Mismo número, disponible y ya armado en OTRA tarea: es un
                             // posible duplicado físico (dos dosímetros con el mismo
                             // número). No se sobrescribe el existente: se carga una
@@ -258,11 +261,10 @@ public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroServ
                                 d.setTarea(f.tarea());
                                 d.setNumeroBandeja(f.numeroBandeja());
                                 d.setSlotBandeja(f.slotBandeja());
-                                // Si venía asignado, el dosímetro volvió a la oficina
-                                // y se rearma con la nueva tarea: queda disponible para
-                                // una nueva asignación. La asignación anterior se
-                                // conserva como historial.
-                                if (estabaAsignado) {
+                                // Si venía asignado (volvió a la oficina) o estaba
+                                // extraviado (reapareció en esta carga), se rearma y
+                                // queda disponible. El historial se conserva.
+                                if (estabaAsignado || estabaExtraviado) {
                                     d.setEstado("disponible");
                                 }
                                 dosimetroRepository.save(d);

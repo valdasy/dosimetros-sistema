@@ -134,6 +134,26 @@ class DosimetroServiceTest {
     }
 
     @Test
+    void marcarExtraviadoDejaElDosimetroExtraviado() {
+        Dosimetro d = dosimetro("asignado");
+        when(dosimetroRepository.findById(1)).thenReturn(Optional.of(d));
+        when(dosimetroRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        DosimetroResponse resp = service.marcarExtraviado(1, "No encontrado");
+
+        assertEquals("extraviado", resp.getEstado());
+    }
+
+    @Test
+    void noSePuedeMarcarExtraviadoUnDadoDeBaja() {
+        Dosimetro d = dosimetro("baja");
+        when(dosimetroRepository.findById(1)).thenReturn(Optional.of(d));
+
+        assertThrows(IllegalArgumentException.class, () -> service.marcarExtraviado(1, null));
+        verify(dosimetroRepository, never()).save(any());
+    }
+
+    @Test
     void eliminarTareasDesarmaLosDosimetrosYBorraLaTarea() {
         when(tareaRepository.findById(7)).thenReturn(Optional.of(tarea(7, "50")));
         Dosimetro d1 = dosimetro("disponible"); d1.setTarea(tarea(7, "50")); d1.setNumeroBandeja(3); d1.setSlotBandeja(9);

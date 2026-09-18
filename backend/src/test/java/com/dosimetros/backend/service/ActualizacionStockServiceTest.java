@@ -148,6 +148,38 @@ class ActualizacionStockServiceTest {
     }
 
     @Test
+    void upsertRecuperaDosimetroExtraviado() {
+        // Un dosímetro extraviado que reaparece en la carga se rearma y vuelve a disponible.
+        seedDosimetro(550, gringo, 1, 1, "extraviado");
+
+        ActualizacionStockResponse resp = service.actualizarStockExcel(excel(new String[][]{
+                {"550", "TLD", "Viejo", "1765", "4", "4"},
+        }));
+
+        assertEquals(0, resp.getFallidas());
+        assertEquals(1, resp.getActualizados());
+        Dosimetro d = dosimetroRepository.findByNumeroOrderByIdAsc(550).get(0);
+        assertEquals("disponible", d.getEstado());
+        assertEquals(viejo.getId(), d.getTipoPorta().getId());
+    }
+
+    @Test
+    void upsertRecuperaExtraviadoAunqueElArmadoSeaIgual() {
+        // Aunque el armado del archivo coincida, un extraviado igual se recupera
+        // (no se trata como "sin cambios").
+        seedDosimetro(560, gringo, 1, 1, "extraviado");
+
+        ActualizacionStockResponse resp = service.actualizarStockExcel(excel(new String[][]{
+                {"560", "TLD", "Gringo", "1765", "1", "1"},
+        }));
+
+        assertEquals(0, resp.getFallidas());
+        assertEquals(0, resp.getSinCambios());
+        Dosimetro d = dosimetroRepository.findByNumeroOrderByIdAsc(560).get(0);
+        assertEquals("disponible", d.getEstado());
+    }
+
+    @Test
     void upsertNoTocaDosimetrosDadosDeBaja() {
         seedDosimetro(600, gringo, 1, 1, "baja");
 

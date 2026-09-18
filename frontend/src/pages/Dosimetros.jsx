@@ -9,6 +9,7 @@ import {
   getEmpresas,
   marcarDanado,
   marcarBueno,
+  marcarExtraviado,
   liberarDosimetro,
   darDeBaja,
   marcarStockEmergencia,
@@ -23,7 +24,7 @@ import Combobox from '../components/Combobox'
 import { useToast } from '../components/Toast'
 import { useNavigate } from 'react-router-dom'
 
-const estadoColor = { disponible: 'green', asignado: 'blue', baja: 'red', dañado: 'amber' }
+const estadoColor = { disponible: 'green', asignado: 'blue', baja: 'red', dañado: 'amber', extraviado: 'slate' }
 
 export default function Dosimetros() {
   const [vista, setVista] = useState('edicion') // 'edicion' | 'correcciones'
@@ -129,6 +130,10 @@ function Edicion({ tiposDosimetro, portas, clientes, ejecutivos, empresas, toast
     const obs = window.prompt('Motivo de la baja (opcional):', '') ?? ''
     accion(darDeBaja, 'Dosímetro dado de baja')(id, obs)
   }
+  const onExtraviado = (id) => {
+    const obs = window.prompt('Nota del extravío (opcional):', 'No encontrado') ?? ''
+    accion(marcarExtraviado, 'Dosímetro marcado como extraviado')(id, obs)
+  }
   const onDuplicado = (id) => {
     const obs = window.prompt('Observación del duplicado / stock de emergencia:', 'Duplicado') ?? 'Duplicado'
     accion(marcarStockEmergencia, 'Marcado como duplicado / stock de emergencia')(id, obs)
@@ -188,14 +193,21 @@ function Edicion({ tiposDosimetro, portas, clientes, ejecutivos, empresas, toast
               <>
                 <BotonAccion onClick={() => onDanado(d.id)} color="amber">Marcar dañado</BotonAccion>
                 <BotonAccion onClick={() => onDuplicado(d.id)} color="blue">Marcar duplicado</BotonAccion>
+                <BotonAccion onClick={() => onExtraviado(d.id)} color="slate">Marcar extraviado</BotonAccion>
                 <BotonAccion onClick={() => onBaja(d.id)} color="red">Dar de baja</BotonAccion>
               </>
             )}
             {d.estado === 'asignado' && (
               <>
                 <BotonAccion onClick={() => onLiberar(d.id)} color="steel">Liberar</BotonAccion>
+                <BotonAccion onClick={() => onExtraviado(d.id)} color="slate">Marcar extraviado</BotonAccion>
                 <BotonAccion onClick={() => onBaja(d.id)} color="red">Dar de baja</BotonAccion>
               </>
+            )}
+            {d.estado === 'extraviado' && (
+              <p className="text-sm text-slate-500">
+                Extraviado. Se recupera automáticamente si reaparece en una carga de "Actualizar stock".
+              </p>
             )}
             {d.estado === 'dañado' && (
               <>
@@ -696,6 +708,7 @@ function BotonAccion({ onClick, color, children }) {
     blue: 'text-steel border-steel/30 hover:bg-steel/5',
     steel: 'text-steel border-steel/30 hover:bg-steel/5',
     red: 'text-red-600 border-red-200 hover:bg-red-50',
+    slate: 'text-slate-600 border-slate-300 hover:bg-slate-50',
   }
   return (
     <button type="button" onClick={onClick} className={`px-3 py-1.5 rounded-lg border text-sm ${colores[color]}`}>

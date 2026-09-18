@@ -16,7 +16,7 @@ import LiberacionMasiva from '../components/LiberacionMasiva'
 import EliminarTareas from '../components/EliminarTareas'
 import { useToast } from '../components/Toast'
 
-const estadoColor = { disponible: 'green', asignado: 'blue', baja: 'red', dañado: 'amber' }
+const estadoColor = { disponible: 'green', asignado: 'blue', baja: 'red', dañado: 'amber', extraviado: 'slate' }
 
 // Construye el árbol jerárquico Tipo → Porta → Tarea → Bandeja → Slot.
 function construirArbol(dosimetros) {
@@ -394,6 +394,7 @@ export default function Stock() {
             <option value="disponible">Disponible</option>
             <option value="asignado">Asignado</option>
             <option value="dañado">Dañado</option>
+            <option value="extraviado">Extraviado</option>
             <option value="baja">Baja</option>
             <option value="">Todos</option>
           </Select>

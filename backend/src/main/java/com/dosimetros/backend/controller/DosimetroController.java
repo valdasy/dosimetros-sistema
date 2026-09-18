@@ -222,6 +222,16 @@ public class DosimetroController {
         return ResponseEntity.ok(service.marcarStockEmergencia(id, observacion));
     }
 
+    // Marca un dosímetro como extraviado (no se encuentra). Sale del stock y no se
+    // puede asignar; se recupera solo si reaparece en una carga de "Actualizar stock".
+    @PatchMapping("/{id}/extraviado")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    public ResponseEntity<DosimetroResponse> marcarExtraviado(
+            @PathVariable Integer id,
+            @RequestParam(required = false) String observacion) {
+        return ResponseEntity.ok(service.marcarExtraviado(id, observacion));
+    }
+
     @PatchMapping("/{id}/baja")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> darDeBaja(
