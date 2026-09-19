@@ -100,6 +100,11 @@ export const actualizarCliente = (id, data) =>
 export const desactivarCliente = (id) => client.patch(`/clientes/${id}/desactivar`)
 export const getAsignacionesPorCliente = (clienteId) =>
   client.get(`/asignaciones/cliente/${clienteId}`).then((r) => r.data)
+// Trimestres (distintos) de un cliente, para los chips de filtro sin traer todo.
+export const getTrimestresCliente = (clienteId) =>
+  client.get(`/asignaciones/cliente/${clienteId}/trimestres`).then((r) => r.data)
+export const getMisTrimestresCliente = (clienteId) =>
+  client.get(`/ejecutivo/clientes/${clienteId}/trimestres`).then((r) => r.data)
 
 // --- Ejecutivos ---
 export const getEjecutivos = () => client.get('/ejecutivos').then((r) => r.data)

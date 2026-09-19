@@ -96,6 +96,12 @@ public class AsignacionService {
                 .toList();
     }
 
+    // Trimestres (distintos) de un cliente, para poblar los chips sin traer todas
+    // las asignaciones. ejecutivoId opcional acota al ejecutivo (vista del ejecutivo).
+    public List<String> trimestresDeCliente(Integer clienteId, Integer ejecutivoId) {
+        return asignacionRepository.trimestresDeCliente(clienteId, ejecutivoId);
+    }
+
     // Vista ejecutivo con multifiltros (todos opcionales).
     public List<AsignacionResponse> filtrarPorEjecutivo(
             Integer ejecutivoId, Integer clienteId, String trimestre, java.time.LocalDate fecha,

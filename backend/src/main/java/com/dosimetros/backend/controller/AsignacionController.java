@@ -52,6 +52,14 @@ public class AsignacionController {
         return ResponseEntity.ok(service.listarPorCliente(clienteId));
     }
 
+    // Trimestres (distintos) de un cliente, para poblar los chips de filtro sin
+    // traer todas las asignaciones (carga perezosa por trimestre).
+    @GetMapping("/cliente/{clienteId}/trimestres")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    public ResponseEntity<List<String>> trimestresDeCliente(@PathVariable Integer clienteId) {
+        return ResponseEntity.ok(service.trimestresDeCliente(clienteId, null));
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
     public ResponseEntity<AsignacionResponse> crear(@Valid @RequestBody AsignacionRequest request) {

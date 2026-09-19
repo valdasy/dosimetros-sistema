@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { getMisAsignaciones, getMisClientes, getClientes, buscarAsignaciones } from '../api/endpoints'
+import { getMisAsignaciones, getMisClientes, getClientes, buscarAsignaciones,
+  getTrimestresCliente, getMisTrimestresCliente } from '../api/endpoints'
 import { Card, Input, Button, Alert, Loading, EmptyState, Pagination } from '../components/ui'
 import Combobox from '../components/Combobox'
 import { useToast } from '../components/Toast'
@@ -49,7 +50,11 @@ export default function MisDosimetros() {
 
   const [clientes, setClientes] = useState([])
   const [clienteId, setClienteId] = useState('')
-  const [asignaciones, setAsignaciones] = useState([])
+  // Trimestres disponibles del cliente (traídos con una consulta liviana) y
+  // caché de asignaciones ya cargadas por trimestre (carga perezosa).
+  const [trimestresDisp, setTrimestresDisp] = useState([])
+  const [cache, setCache] = useState({})
+  const [cargando, setCargando] = useState(() => new Set())
   const [trimestresSel, setTrimestresSel] = useState(() => new Set())
   const [fecha, setFecha] = useState('')
   const [loading, setLoading] = useState(false)
@@ -72,48 +77,70 @@ export default function MisDosimetros() {
       )
   }, [esEjecutivo])
 
-  // Al elegir un cliente se cargan TODAS sus asignaciones (todos los trimestres).
+  // Al elegir un cliente solo se trae la LISTA de trimestres (consulta liviana).
+  // Las asignaciones se cargan después, por trimestre, al seleccionarlos.
   const elegirCliente = (id) => {
     setClienteId(id)
     setTrimestresSel(new Set())
     setFecha('')
+    setCache({})
+    setCargando(new Set())
+    setTrimestresDisp([])
     if (!id) {
-      setAsignaciones([])
       setBuscado(false)
       return
     }
     setLoading(true)
     setError('')
-    const p = esEjecutivo ? getMisAsignaciones({ clienteId: id }) : buscarAsignaciones({ clienteId: id })
-    p.then((data) => {
-      setAsignaciones([...data].sort(comparar))
+    const p = esEjecutivo ? getMisTrimestresCliente(id) : getTrimestresCliente(id)
+    p.then((lista) => {
+      setTrimestresDisp(ordenarTrimestres(lista))
       setBuscado(true)
       setPage(1)
     })
-      .catch(() => setError('No se pudieron cargar las asignaciones'))
+      .catch(() => setError('No se pudieron cargar los trimestres del cliente'))
       .finally(() => setLoading(false))
   }
 
-  // Trimestres presentes en las asignaciones del cliente (para los chips).
-  const trimestresDisp = useMemo(
-    () => ordenarTrimestres([...new Set(asignaciones.map((a) => a.trimestre))]),
-    [asignaciones]
-  )
+  // Carga (una vez) las asignaciones de un trimestre y las guarda en caché.
+  const cargarTrimestre = (t) => {
+    if (cache[t] || cargando.has(t)) return
+    setCargando((prev) => new Set(prev).add(t))
+    const p = esEjecutivo
+      ? getMisAsignaciones({ clienteId, trimestre: t })
+      : buscarAsignaciones({ clienteId, trimestre: t })
+    p.then((data) => setCache((prev) => ({ ...prev, [t]: [...data].sort(comparar) })))
+      .catch(() => setError(`No se pudieron cargar las asignaciones del trimestre ${t}`))
+      .finally(() => setCargando((prev) => {
+        const n = new Set(prev); n.delete(t); return n
+      }))
+  }
 
   const toggleTrimestre = (t) => setTrimestresSel((prev) => {
     const next = new Set(prev)
-    if (next.has(t)) next.delete(t); else next.add(t)
+    if (next.has(t)) next.delete(t)
+    else { next.add(t); cargarTrimestre(t) }
     return next
   })
 
-  // Filtra por los trimestres seleccionados (o todos) y por fecha.
-  const filtradas = useMemo(() => {
-    return asignaciones.filter((a) => {
-      if (trimestresSel.size > 0 && !trimestresSel.has(a.trimestre)) return false
-      if (fecha && a.fechaAsignacion !== fecha) return false
-      return true
-    })
-  }, [asignaciones, trimestresSel, fecha])
+  // Asignaciones de los trimestres seleccionados (unión de lo cargado en caché).
+  const asignaciones = useMemo(() => {
+    const arr = []
+    for (const t of trimestresSel) if (cache[t]) arr.push(...cache[t])
+    return arr.sort(comparar)
+  }, [trimestresSel, cache])
+
+  // ¿Hay algún trimestre seleccionado aún cargándose?
+  const cargandoTrimestres = useMemo(
+    () => [...trimestresSel].some((t) => cargando.has(t)),
+    [trimestresSel, cargando]
+  )
+
+  // Sub-filtro por fecha dentro de lo ya cargado.
+  const filtradas = useMemo(
+    () => (fecha ? asignaciones.filter((a) => a.fechaAsignacion === fecha) : asignaciones),
+    [asignaciones, fecha]
+  )
 
   useEffect(() => { setPage(1) }, [trimestresSel, fecha])
 
@@ -191,8 +218,8 @@ export default function MisDosimetros() {
           {esEjecutivo ? 'Mis dosímetros' : 'Asignaciones por cliente'}
         </h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Elige un <b>cliente</b>, luego uno o varios <b>trimestres</b> (y/o una fecha). La
-          información se muestra recién al seleccionar los trimestres, para no cargar todo de golpe.
+          Elige un <b>cliente</b> y luego uno o varios <b>trimestres</b>. Las asignaciones se cargan
+          por trimestre (no todo el historial de golpe), por eso la consulta es más liviana.
         </p>
       </div>
 
@@ -214,7 +241,7 @@ export default function MisDosimetros() {
         <Loading />
       ) : !buscado ? (
         <Card><EmptyState>Selecciona un cliente para ver sus asignaciones.</EmptyState></Card>
-      ) : asignaciones.length === 0 ? (
+      ) : trimestresDisp.length === 0 ? (
         <Card><EmptyState>Este cliente no tiene asignaciones.</EmptyState></Card>
       ) : (
         <>
@@ -224,7 +251,7 @@ export default function MisDosimetros() {
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-ink/50">Trimestres</p>
                   <span className="text-xs text-ink/40">
-                    {trimestresSel.size === 0 ? 'Todos' : `${trimestresSel.size} seleccionados`}
+                    {trimestresSel.size === 0 ? 'Ninguno' : `${trimestresSel.size} seleccionados`}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -232,8 +259,8 @@ export default function MisDosimetros() {
                     <button key={t} type="button" onClick={() => toggleTrimestre(t)}
                       className={`px-3 py-1 rounded-full border text-sm transition ${
                         trimestresSel.has(t) ? 'bg-steel text-white border-steel' : 'bg-white text-ink/70 border-mist hover:border-steel/50'
-                      }`}>
-                      {t}
+                      } ${cargando.has(t) ? 'opacity-60' : ''}`}>
+                      {t}{cargando.has(t) ? ' …' : ''}
                     </button>
                   ))}
                 </div>
@@ -244,12 +271,14 @@ export default function MisDosimetros() {
             </div>
           </Card>
 
-          {(trimestresSel.size === 0 && !fecha) ? (
+          {trimestresSel.size === 0 ? (
             <Card>
               <EmptyState>
-                Selecciona uno o más <b>trimestres</b> (o una fecha) para ver y descargar la información.
+                Selecciona uno o más <b>trimestres</b> para cargar y descargar la información.
               </EmptyState>
             </Card>
+          ) : cargandoTrimestres && asignaciones.length === 0 ? (
+            <Loading />
           ) : (<>
           <Card
             title={`Grupos de asignación por fecha (${grupos.length})`}

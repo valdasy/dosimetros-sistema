@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -60,6 +61,14 @@ public class ConsultaEjecutivoController {
         Integer ejecutivoId = currentUserService.requireEjecutivoId();
         return ResponseEntity.ok(asignacionService.filtrarPorEjecutivo(
                 ejecutivoId, clienteId, trimestre, fecha, tipoPortaId, numeroBandeja, slotBandeja, link));
+    }
+
+    // Trimestres (distintos) de un cliente del ejecutivo, para los chips de filtro
+    // sin traer todas las asignaciones (carga perezosa por trimestre).
+    @GetMapping("/clientes/{clienteId}/trimestres")
+    public ResponseEntity<List<String>> misTrimestresDeCliente(@PathVariable Integer clienteId) {
+        Integer ejecutivoId = currentUserService.requireEjecutivoId();
+        return ResponseEntity.ok(asignacionService.trimestresDeCliente(clienteId, ejecutivoId));
     }
 
     // #15: exportar a Excel las asignaciones del ejecutivo (con los mismos filtros).

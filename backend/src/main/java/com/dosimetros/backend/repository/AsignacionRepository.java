@@ -47,6 +47,18 @@ public interface AsignacionRepository extends JpaRepository<Asignacion, Integer>
     """)
     List<String> trimestresDeEjecutivo(@Param("ejecutivoId") Integer ejecutivoId);
 
+    // Trimestres (distintos) de un cliente, del más reciente al más antiguo.
+    // ejecutivoId opcional: si viene, se acota a las asignaciones de ese ejecutivo.
+    // Sirve para poblar los chips de trimestre sin traer todas las asignaciones.
+    @Query("""
+        SELECT DISTINCT a.trimestre FROM Asignacion a
+        WHERE a.cliente.id = :clienteId
+          AND (:ejecutivoId IS NULL OR a.ejecutivo.id = :ejecutivoId)
+        ORDER BY SUBSTRING(a.trimestre, 3, 4) DESC, SUBSTRING(a.trimestre, 1, 1) DESC
+    """)
+    List<String> trimestresDeCliente(@Param("clienteId") Integer clienteId,
+                                     @Param("ejecutivoId") Integer ejecutivoId);
+
     @Query("""
         SELECT DISTINCT c.id, c.razonSocial FROM Asignacion a JOIN a.cliente c
         WHERE a.ejecutivo.id = :ejecutivoId ORDER BY c.razonSocial
