@@ -30,7 +30,7 @@ async function mensajeError(err, fallback) {
 function colorEstado(estado) {
   const e = (estado || '').toUpperCase()
   if (e.includes('DESCARGO') || e.includes('ENTREG')) return 'green' // entregado
-  if (e.includes('DEVUEL') || e.includes('EXTRAV') || e.includes('DAÑAD') || e.includes('DANAD') || e.includes('SINIEST') || e.includes('RECHAZ') || e.includes('SOBRANC'))
+  if (e.includes('DEVUEL') || e.includes('EXTRAV') || e.includes('DAÑAD') || e.includes('DANAD') || e.includes('SINIEST') || e.includes('RECHAZ') || e.includes('SOBRANC') || e.includes('RETENC'))
     return 'red' // problema
   if (e.includes('RECEPCION') && !e.includes('PRE')) return 'blue' // disponible para retiro
   if (e.includes('CONTEN')) return 'amber' // en viaje
@@ -43,8 +43,9 @@ function significadoEstado(estado) {
   if (e.includes('DESCARGO')) return 'Entregado'
   if (e.includes('PRE') && e.includes('RECEPCION')) return 'Creada, aún no recibida por Chilexpress'
   if (e.includes('CONTEN')) return 'En viaje al destino'
-  if (e.includes('RECEPCION')) return 'Disponible para retiro en sucursal'
+  if (e.includes('RECEPCION')) return 'En recepción (disponible para retiro solo si la entrega es en oficina)'
   if (e.includes('SOBRANC')) return 'Inconveniente en despacho'
+  if (e.includes('RETENC')) return 'Retenida por Chilexpress'
   return ''
 }
 
@@ -57,6 +58,7 @@ function TablaOts({ rows }) {
             <th className="text-left px-3 py-2 font-semibold">Nro. OT</th>
             <th className="text-left px-3 py-2 font-semibold">Empresa</th>
             <th className="text-left px-3 py-2 font-semibold">Estado</th>
+            <th className="text-left px-3 py-2 font-semibold">Entrega</th>
             <th className="text-left px-3 py-2 font-semibold">Destinatario</th>
             <th className="text-left px-3 py-2 font-semibold">Referencia</th>
             <th className="text-left px-3 py-2 font-semibold">Destino</th>
@@ -75,6 +77,7 @@ function TablaOts({ rows }) {
                   <Badge color={colorEstado(o.estado)}>{o.estado || '—'}</Badge>
                 </span>
               </td>
+              <td className="px-3 py-2 whitespace-nowrap">{o.tipoEntrega || '—'}</td>
               <td className="px-3 py-2">{o.nombreDestinatario || '—'}</td>
               <td className="px-3 py-2">{o.nroReferencia || '—'}</td>
               <td className="px-3 py-2">{o.destino || '—'}</td>
