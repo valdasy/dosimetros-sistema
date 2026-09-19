@@ -100,14 +100,16 @@ export default function TiposPorta() {
   const dialogoEliminar = () => {
     if (!aEliminar) return { mensaje: '', detalle: '', bloqueado: false, tipo: 'error' }
     const { porta, uso } = aEliminar
-    if (uso.esSinArmar) {
+    // Única "Sin armar" de la tecnología: no se puede eliminar (estado por defecto).
+    if (uso.esSinArmar && !uso.tieneFallback) {
       return {
         bloqueado: true,
         tipo: 'error',
-        mensaje: `La porta "${porta.nombre}" es el estado por defecto "Sin armar" y no se puede eliminar (es donde se conserva el histórico).`,
+        mensaje: `La porta "${porta.nombre}" es el único estado "Sin armar (${porta.tipoDosimetroNombre})" de la tecnología y no se puede eliminar (es donde se conserva el histórico).`,
         detalle: '',
       }
     }
+    // Porta en uso sin una "Sin armar" donde reasignar el histórico.
     if (uso.total > 0 && !uso.tieneFallback) {
       return {
         bloqueado: true,
@@ -116,12 +118,24 @@ export default function TiposPorta() {
         detalle: `Crea primero la porta "Sin armar (${porta.tipoDosimetroNombre})" y vuelve a intentar.`,
       }
     }
+    // En uso y con respaldo: se reasigna el histórico a la porta "Sin armar".
     if (uso.total > 0) {
       return {
         bloqueado: false,
         tipo: 'error',
-        mensaje: `Vas a eliminar la porta "${porta.nombre}".`,
+        mensaje: uso.esSinArmar
+          ? `Vas a eliminar la porta "Sin armar" duplicada "${porta.nombre}".`
+          : `Vas a eliminar la porta "${porta.nombre}".`,
         detalle: `Hay ${uso.dosimetros} dosímetro(s) y ${uso.asignaciones} asignación(es) usándola. Si continúas, ese histórico NO se pierde: quedará como "${uso.fallbackNombre}".`,
+      }
+    }
+    // "Sin armar" duplicada sin uso: se puede eliminar sin afectar histórico.
+    if (uso.esSinArmar) {
+      return {
+        bloqueado: false,
+        tipo: 'info',
+        mensaje: `¿Eliminar la porta "Sin armar" duplicada "${porta.nombre}"? No tiene dosímetros ni asignaciones asociados; queda "${uso.fallbackNombre}" como estado por defecto.`,
+        detalle: '',
       }
     }
     return {

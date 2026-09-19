@@ -112,10 +112,18 @@ public class TipoPortaService {
         TipoPorta tp = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tipo de porta no encontrado con id: " + id));
 
-        if (esSinArmar(tp)) {
+        // Porta "Sin armar" de respaldo de la misma tecnología (distinta de la propia).
+        TipoPorta fallback = fallbackSinArmar(tp);
+
+        // Solo se bloquea eliminar una "Sin armar" cuando es la ÚNICA de su
+        // tecnología (es el estado por defecto donde se conserva el histórico).
+        // Si hay otra "Sin armar" de la misma tecnología (duplicada), sí se puede
+        // eliminar: el histórico se absorbe en la que queda.
+        if (esSinArmar(tp) && fallback == null) {
             throw new IllegalArgumentException(
-                    "No se puede eliminar la porta '" + tp.getNombre() +
-                    "': es el estado por defecto ('Sin armar') donde se conserva el histórico.");
+                    "No se puede eliminar '" + tp.getNombre() + "': es el único estado " +
+                    "'Sin armar (" + tp.getTipoDosimetro().getNombre() + ")' de la tecnología, " +
+                    "donde se conserva el histórico.");
         }
 
         long dosimetros = dosimetroRepository.countByTipoPortaId(id);
@@ -129,7 +137,6 @@ public class TipoPortaService {
                         " dosímetro(s) y " + asignaciones + " asignación(es). Confirma para conservar " +
                         "el histórico como 'Sin armar'.");
             }
-            TipoPorta fallback = fallbackSinArmar(tp);
             if (fallback == null) {
                 throw new IllegalArgumentException(
                         "No existe una porta 'Sin armar (" + tp.getTipoDosimetro().getNombre() + ")' para " +
