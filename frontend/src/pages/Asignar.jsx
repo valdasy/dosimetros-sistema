@@ -15,6 +15,7 @@ import {
 import { Card, Button, Input, Alert, Badge, EmptyState } from '../components/ui'
 import Combobox from '../components/Combobox'
 import { useToast } from '../components/Toast'
+import { construirResumenTexto } from '../lib/resumen'
 import { useSearchParams } from 'react-router-dom'
 
 const TRIMESTRE_REGEX = /^[1-4]T\d{4}$/
@@ -34,52 +35,6 @@ function normalizaTrimestre(valor) {
   let t = (valor || '').toUpperCase().replace(/\s/g, '')
   if (/^[1-4]T$/.test(t)) t = t + new Date().getFullYear()
   return t
-}
-
-// Comprime una lista de slots en rangos legibles: [1,2,3,5,7,8] -> "1-3, 5, 7-8".
-function comprimirRangos(slots) {
-  const s = [...new Set(slots.filter((n) => n != null))].sort((a, b) => a - b)
-  if (!s.length) return ''
-  const partes = []
-  let ini = s[0], prev = s[0]
-  for (let i = 1; i < s.length; i++) {
-    if (s[i] === prev + 1) { prev = s[i]; continue }
-    partes.push(ini === prev ? `${ini}` : `${ini}-${prev}`)
-    ini = prev = s[i]
-  }
-  partes.push(ini === prev ? `${ini}` : `${ini}-${prev}`)
-  return partes.join(', ')
-}
-
-// Arma el texto copiable (para Trello) con las tareas/bandejas/slots ocupados,
-// agrupado por tarea y bandeja, con encabezado de cliente/trimestre/total.
-function construirResumenTexto(asignaciones) {
-  if (!asignaciones?.length) return ''
-  const a0 = asignaciones[0]
-  const grupos = new Map()
-  for (const a of asignaciones) {
-    const tarea = a.numeroTarea || 'Sin tarea'
-    const bandeja = a.numeroBandeja ?? null
-    const clave = `${tarea}||${bandeja ?? 'sb'}`
-    if (!grupos.has(clave)) grupos.set(clave, { tarea, bandeja, slots: [] })
-    if (a.slotBandeja != null) grupos.get(clave).slots.push(a.slotBandeja)
-  }
-  const arr = [...grupos.values()].sort((x, y) => {
-    const tx = Number(x.tarea) || 0, ty = Number(y.tarea) || 0
-    if (tx !== ty) return tx - ty
-    return (x.bandeja ?? -1) - (y.bandeja ?? -1)
-  })
-  const lineas = arr.map((g) => {
-    const band = g.bandeja != null ? `Bandeja ${g.bandeja}` : 'Sin bandeja'
-    const rangos = comprimirRangos(g.slots)
-    return `- Tarea ${g.tarea} · ${band}${rangos ? `: slots ${rangos}` : ''}`
-  })
-  return [
-    `Cliente: ${a0.clienteNombre} — Trimestre: ${a0.trimestre}`,
-    `Dosímetros asignados: ${asignaciones.length}`,
-    'Tareas ocupadas:',
-    ...lineas,
-  ].join('\n')
 }
 
 export default function Asignar() {

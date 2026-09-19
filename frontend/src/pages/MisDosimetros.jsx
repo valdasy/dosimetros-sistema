@@ -4,6 +4,7 @@ import { getMisAsignaciones, getMisClientes, getClientes, buscarAsignaciones } f
 import { Card, Input, Button, Alert, Loading, EmptyState, Pagination } from '../components/ui'
 import Combobox from '../components/Combobox'
 import { useToast } from '../components/Toast'
+import { construirResumenTexto } from '../lib/resumen'
 
 const POR_PAGINA = 25
 
@@ -172,6 +173,17 @@ export default function MisDosimetros() {
     }
   }
 
+  // Copia el mismo resumen que se genera al asignar (cliente/trimestre + tareas,
+  // bandejas y rangos de slots), para volver a pegarlo en Trello.
+  const copiarResumen = async (items) => {
+    try {
+      await navigator.clipboard.writeText(construirResumenTexto(items))
+      toast.success('Resumen copiado (pégalo en Trello)')
+    } catch {
+      toast.error('No se pudo copiar automáticamente.')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -296,7 +308,10 @@ export default function MisDosimetros() {
 
                       {grupoAbierto === g.fecha && (
                         <div className="mt-2 rounded-lg border border-mist/60 bg-cream/40 p-3">
-                          <div className="flex justify-end mb-2">
+                          <div className="flex flex-wrap justify-end gap-2 mb-2">
+                            <Button variant="secondary" onClick={() => copiarResumen(g.items)}>
+                              Copiar resumen
+                            </Button>
                             <Button variant="secondary" onClick={() => copiarDosimetros(g.items)}>
                               Copiar dosímetros
                             </Button>
