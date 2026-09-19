@@ -1,7 +1,9 @@
 package com.dosimetros.backend.repository;
 
 import com.dosimetros.backend.entity.Asignacion;
+import com.dosimetros.backend.entity.TipoPorta;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,6 +13,18 @@ import java.util.List;
 public interface AsignacionRepository extends JpaRepository<Asignacion, Integer> {
 
     List<Asignacion> findByDosimetroIdOrderByFechaAsignacionDesc(Integer dosimetroId);
+
+    // Cuántas asignaciones usan un tipo de porta (para proteger su eliminación).
+    long countByTipoPortaId(Integer tipoPortaId);
+
+    // Reasigna en bloque el tipo de porta del histórico de asignaciones a otra
+    // porta (la "Sin armar" de la misma tecnología) al eliminar una porta en uso.
+    @Modifying
+    @Query("UPDATE Asignacion a SET a.tipoPorta = :destino WHERE a.tipoPorta = :origen")
+    int reasignarTipoPorta(@Param("origen") TipoPorta origen, @Param("destino") TipoPorta destino);
+
+    // Cuántas asignaciones (histórico) tiene un ejecutivo (aviso al desactivar).
+    long countByEjecutivoId(Integer ejecutivoId);
 
     List<Asignacion> findByEjecutivoIdOrderByTrimestreDescFechaAsignacionDesc(Integer ejecutivoId);
 

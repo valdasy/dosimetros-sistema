@@ -2,6 +2,7 @@ package com.dosimetros.backend.controller;
 
 import com.dosimetros.backend.dto.tipoporta.TipoPortaRequest;
 import com.dosimetros.backend.dto.tipoporta.TipoPortaResponse;
+import com.dosimetros.backend.dto.tipoporta.UsoTipoPortaResponse;
 import com.dosimetros.backend.service.TipoPortaService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -52,10 +53,22 @@ public class TipoPortaController {
         return ResponseEntity.ok(tipoPortaService.actualizar(id, request));
     }
 
+    // Uso del tipo de porta (dosímetros/asignaciones que lo referencian), para
+    // avisar antes de eliminar y saber si hay una porta "Sin armar" de respaldo.
+    @GetMapping("/{id}/uso")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    public ResponseEntity<UsoTipoPortaResponse> uso(@PathVariable Integer id) {
+        return ResponseEntity.ok(tipoPortaService.uso(id));
+    }
+
+    // Al eliminar: si está en uso, confirmar=true reasigna el histórico a la porta
+    // "Sin armar" de la misma tecnología antes de borrar (no se pierde el histórico).
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
-    public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
-        tipoPortaService.eliminar(id);
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Integer id,
+            @RequestParam(required = false, defaultValue = "false") boolean confirmar) {
+        tipoPortaService.eliminar(id, confirmar);
         return ResponseEntity.noContent().build();
     }
 }

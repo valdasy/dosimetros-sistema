@@ -1,9 +1,11 @@
 package com.dosimetros.backend.repository;
 
 import com.dosimetros.backend.entity.Dosimetro;
+import com.dosimetros.backend.entity.TipoPorta;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,6 +16,15 @@ import java.util.Optional;
 public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
 
     Optional<Dosimetro> findByNumeroAndEstado(Integer numero, String estado);
+
+    // Cuántos dosímetros usan un tipo de porta (para proteger su eliminación).
+    long countByTipoPortaId(Integer tipoPortaId);
+
+    // Reasigna en bloque el tipo de porta (al eliminar una porta con histórico,
+    // se conserva pasándolos a la porta "Sin armar" de la misma tecnología).
+    @Modifying
+    @Query("UPDATE Dosimetro d SET d.tipoPorta = :destino WHERE d.tipoPorta = :origen")
+    int reasignarTipoPorta(@Param("origen") TipoPorta origen, @Param("destino") TipoPorta destino);
 
     List<Dosimetro> findByEstadoOrderByNumeroAsc(String estado);
 

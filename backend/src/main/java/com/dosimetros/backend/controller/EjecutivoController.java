@@ -2,6 +2,7 @@ package com.dosimetros.backend.controller;
 
 import com.dosimetros.backend.dto.ejecutivo.EjecutivoRequest;
 import com.dosimetros.backend.dto.ejecutivo.EjecutivoResponse;
+import com.dosimetros.backend.dto.ejecutivo.UsoEjecutivoResponse;
 import com.dosimetros.backend.service.EjecutivoService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -44,6 +45,13 @@ public class EjecutivoController {
             @PathVariable Integer id,
             @Valid @RequestBody EjecutivoRequest request) {
         return ResponseEntity.ok(ejecutivoService.actualizar(id, request));
+    }
+
+    // Impacto de desactivar (clientes activos + asignaciones), para avisar en la UI.
+    @GetMapping("/{id}/uso")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    public ResponseEntity<UsoEjecutivoResponse> uso(@PathVariable Integer id) {
+        return ResponseEntity.ok(ejecutivoService.uso(id));
     }
 
     @PatchMapping("/{id}/desactivar")

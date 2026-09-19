@@ -10,8 +10,10 @@ import {
   getEjecutivos,
   crearEjecutivo,
   desactivarEjecutivo,
+  getUsoEjecutivo,
 } from '../api/endpoints'
 import { Card, Button, Input, Select, Badge, Loading, EmptyState } from '../components/ui'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 
 // Módulo unificado de personas del sistema. Se separa en dos pestañas para
@@ -83,6 +85,8 @@ function PanelEjecutivos() {
   const [ejecutivos, setEjecutivos] = useState([])
   const [form, setForm] = useState({ nombre: '', email: '' })
   const [loading, setLoading] = useState(true)
+  const [aBaja, setABaja] = useState(null) // { ejecutivo, uso } | null
+  const [procesando, setProcesando] = useState(false)
   const toast = useToast()
 
   const cargar = () =>
@@ -108,13 +112,27 @@ function PanelEjecutivos() {
     }
   }
 
-  const handleDesactivar = async (id) => {
+  const pedirDesactivar = async (ejecutivo) => {
     try {
-      await desactivarEjecutivo(id)
-      toast.success('Ejecutivo desactivado')
+      const uso = await getUsoEjecutivo(ejecutivo.id)
+      setABaja({ ejecutivo, uso })
+    } catch {
+      toast.error('No se pudo verificar el impacto')
+    }
+  }
+
+  const confirmarDesactivar = async () => {
+    if (!aBaja) return
+    setProcesando(true)
+    try {
+      await desactivarEjecutivo(aBaja.ejecutivo.id)
+      toast.success('Ejecutivo desactivado (su histórico se conserva)')
+      setABaja(null)
       cargar()
     } catch {
       toast.error('No se pudo desactivar')
+    } finally {
+      setProcesando(false)
     }
   }
 
@@ -168,7 +186,7 @@ function PanelEjecutivos() {
                 {e.activo && (
                   <div className="flex justify-end">
                     <button
-                      onClick={() => handleDesactivar(e.id)}
+                      onClick={() => pedirDesactivar(e)}
                       className="text-sm text-red-600 hover:underline"
                     >
                       Desactivar
@@ -180,6 +198,24 @@ function PanelEjecutivos() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!aBaja}
+        title="Desactivar ejecutivo"
+        mensaje={aBaja ? `Vas a desactivar al ejecutivo "${aBaja.ejecutivo.nombre}".` : ''}
+        detalle={
+          aBaja
+            ? `Tiene ${aBaja.uso.clientes} cliente(s) a cargo y ${aBaja.uso.asignaciones} asignación(es). ` +
+              'El histórico NO se borra: sus clientes y asignaciones seguirán visibles en "Asignaciones por cliente" y "Pendiente de asignación". Solo dejará de aparecer como ejecutivo activo.'
+            : ''
+        }
+        detalleTipo="info"
+        confirmLabel="Desactivar"
+        tone="danger"
+        loading={procesando}
+        onConfirm={confirmarDesactivar}
+        onCancel={() => setABaja(null)}
+      />
     </div>
   )
 }
@@ -194,6 +230,8 @@ function PanelUsuarios() {
   const [form, setForm] = useState(VACIO)
   const [editId, setEditId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [aBaja, setABaja] = useState(null) // usuario | null
+  const [procesando, setProcesando] = useState(false)
   const toast = useToast()
 
   const cargar = () =>
@@ -258,14 +296,19 @@ function PanelUsuarios() {
     }
   }
 
-  const handleDesactivar = async (id) => {
+  const confirmarDesactivar = async () => {
+    if (!aBaja) return
+    setProcesando(true)
     try {
-      await desactivarUsuario(id)
+      await desactivarUsuario(aBaja.id)
       toast.success('Usuario desactivado')
-      if (editId === id) resetForm()
+      if (editId === aBaja.id) resetForm()
+      setABaja(null)
       cargar()
     } catch {
       toast.error('No se pudo desactivar')
+    } finally {
+      setProcesando(false)
     }
   }
 
@@ -355,7 +398,7 @@ function PanelUsuarios() {
                       </button>
                       {u.activo && (
                         <button
-                          onClick={() => handleDesactivar(u.id)}
+                          onClick={() => setABaja(u)}
                           className="text-red-600 hover:underline text-sm"
                         >
                           Desactivar
@@ -376,6 +419,19 @@ function PanelUsuarios() {
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={!!aBaja}
+        title="Desactivar usuario"
+        mensaje={aBaja ? `¿Desactivar el usuario "${aBaja.username}"?` : ''}
+        detalle="La cuenta ya no podrá iniciar sesión. No se borra nada del histórico y puedes volver a crearla si es necesario."
+        detalleTipo="info"
+        confirmLabel="Desactivar"
+        tone="danger"
+        loading={procesando}
+        onConfirm={confirmarDesactivar}
+        onCancel={() => setABaja(null)}
+      />
     </div>
   )
 }

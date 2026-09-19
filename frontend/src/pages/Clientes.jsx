@@ -18,6 +18,7 @@ import {
   Pagination,
   Modal,
 } from '../components/ui'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 
 const POR_PAGINA = 20
@@ -31,6 +32,8 @@ export default function Clientes() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [detalle, setDetalle] = useState(null) // { cliente, asignaciones, loading }
+  const [aBaja, setABaja] = useState(null) // cliente | null
+  const [procesando, setProcesando] = useState(false)
   const toast = useToast()
 
   const cargar = (f = filtros) => {
@@ -90,13 +93,18 @@ export default function Clientes() {
     }
   }
 
-  const handleDesactivar = async (id) => {
+  const confirmarDesactivar = async () => {
+    if (!aBaja) return
+    setProcesando(true)
     try {
-      await desactivarCliente(id)
+      await desactivarCliente(aBaja.id)
       toast.success('Cliente desactivado')
+      setABaja(null)
       cargar()
     } catch {
       toast.error('No se pudo desactivar')
+    } finally {
+      setProcesando(false)
     }
   }
 
@@ -222,7 +230,7 @@ export default function Clientes() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleDesactivar(c.id)
+                            setABaja(c)
                           }}
                           className="text-red-600 hover:underline text-sm"
                         >
@@ -300,6 +308,19 @@ export default function Clientes() {
           )}
         </Modal>
       )}
+
+      <ConfirmDialog
+        open={!!aBaja}
+        title="Desactivar cliente"
+        mensaje={aBaja ? `¿Desactivar el cliente "${aBaja.razonSocial}"?` : ''}
+        detalle="No se borra su histórico de asignaciones. Dejará de aparecer en los listados de clientes activos, pero su información se conserva."
+        detalleTipo="info"
+        confirmLabel="Desactivar"
+        tone="danger"
+        loading={procesando}
+        onConfirm={confirmarDesactivar}
+        onCancel={() => setABaja(null)}
+      />
     </div>
   )
 }

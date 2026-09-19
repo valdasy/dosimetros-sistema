@@ -5,8 +5,10 @@ import {
   crearTipoPorta,
   actualizarTipoPorta,
   eliminarTipoPorta,
+  getUsoTipoPorta,
 } from '../api/endpoints'
 import { Card, Button, Input, Select, Badge, Loading, EmptyState } from '../components/ui'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 
 const VACIO = { nombre: '', tipoDosimetroId: '' }
@@ -17,6 +19,9 @@ export default function TiposPorta() {
   const [form, setForm] = useState(VACIO)
   const [editId, setEditId] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Confirmación de eliminación: { porta, uso } | null; y estado de proceso.
+  const [aEliminar, setAEliminar] = useState(null)
+  const [procesando, setProcesando] = useState(false)
   const toast = useToast()
 
   const cargar = () =>
@@ -59,14 +64,71 @@ export default function TiposPorta() {
     setForm({ nombre: p.nombre, tipoDosimetroId: String(p.tipoDosimetroId) })
   }
 
-  const eliminar = async (id) => {
+  // Paso 1: consulta el uso y abre el diálogo de confirmación.
+  const pedirEliminar = async (p) => {
     try {
-      await eliminarTipoPorta(id)
-      toast.success('Tipo de porta eliminado')
-      if (editId === id) resetForm()
+      const uso = await getUsoTipoPorta(p.id)
+      setAEliminar({ porta: p, uso })
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo verificar el uso')
+    }
+  }
+
+  // Paso 2: confirma. Si hay histórico, se reasigna a "Sin armar (…)" en el backend.
+  const confirmarEliminar = async () => {
+    if (!aEliminar) return
+    const { porta, uso } = aEliminar
+    setProcesando(true)
+    try {
+      await eliminarTipoPorta(porta.id, uso.total > 0)
+      toast.success(
+        uso.total > 0
+          ? `Porta eliminada; histórico reasignado a "${uso.fallbackNombre}"`
+          : 'Tipo de porta eliminado'
+      )
+      if (editId === porta.id) resetForm()
+      setAEliminar(null)
       cargar()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'No se pudo eliminar (puede estar en uso)')
+      toast.error(err.response?.data?.message || 'No se pudo eliminar')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  // Construye el texto de la confirmación según el uso.
+  const dialogoEliminar = () => {
+    if (!aEliminar) return { mensaje: '', detalle: '', bloqueado: false, tipo: 'error' }
+    const { porta, uso } = aEliminar
+    if (uso.esSinArmar) {
+      return {
+        bloqueado: true,
+        tipo: 'error',
+        mensaje: `La porta "${porta.nombre}" es el estado por defecto "Sin armar" y no se puede eliminar (es donde se conserva el histórico).`,
+        detalle: '',
+      }
+    }
+    if (uso.total > 0 && !uso.tieneFallback) {
+      return {
+        bloqueado: true,
+        tipo: 'error',
+        mensaje: `"${porta.nombre}" tiene histórico (${uso.dosimetros} dosímetro(s) y ${uso.asignaciones} asignación(es)) pero no existe una porta "Sin armar (${porta.tipoDosimetroNombre})" para conservarlo.`,
+        detalle: `Crea primero la porta "Sin armar (${porta.tipoDosimetroNombre})" y vuelve a intentar.`,
+      }
+    }
+    if (uso.total > 0) {
+      return {
+        bloqueado: false,
+        tipo: 'error',
+        mensaje: `Vas a eliminar la porta "${porta.nombre}".`,
+        detalle: `Hay ${uso.dosimetros} dosímetro(s) y ${uso.asignaciones} asignación(es) usándola. Si continúas, ese histórico NO se pierde: quedará como "${uso.fallbackNombre}".`,
+      }
+    }
+    return {
+      bloqueado: false,
+      tipo: 'info',
+      mensaje: `¿Eliminar la porta "${porta.nombre}"? No tiene dosímetros ni asignaciones asociados.`,
+      detalle: '',
     }
   }
 
@@ -133,7 +195,7 @@ export default function TiposPorta() {
                       <button onClick={() => editar(p)} className="text-steel hover:underline text-sm">
                         Editar
                       </button>
-                      <button onClick={() => eliminar(p.id)} className="text-red-600 hover:underline text-sm">
+                      <button onClick={() => pedirEliminar(p)} className="text-red-600 hover:underline text-sm">
                         Eliminar
                       </button>
                     </td>
@@ -151,6 +213,25 @@ export default function TiposPorta() {
           </div>
         )}
       </Card>
+
+      {(() => {
+        const d = dialogoEliminar()
+        return (
+          <ConfirmDialog
+            open={!!aEliminar}
+            title="Eliminar tipo de porta"
+            mensaje={d.mensaje}
+            detalle={d.detalle}
+            detalleTipo={d.tipo}
+            confirmLabel={d.bloqueado ? 'Entendido' : 'Eliminar'}
+            cancelLabel={d.bloqueado ? 'Cerrar' : 'Cancelar'}
+            tone={d.bloqueado ? 'primary' : 'danger'}
+            loading={procesando}
+            onConfirm={d.bloqueado ? () => setAEliminar(null) : confirmarEliminar}
+            onCancel={() => setAEliminar(null)}
+          />
+        )
+      })()}
     </div>
   )
 }

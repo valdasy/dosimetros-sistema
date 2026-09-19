@@ -24,11 +24,12 @@ class ChilexpressOtRepositoryTest {
     @Autowired
     private ChilexpressOtRepository repo;
 
-    private void guardar(String ot, String estado, LocalDate fechaEntrega) {
+    private void guardar(String ot, String estado, String tipoEntrega, LocalDate fechaEntrega) {
         ChilexpressOt o = new ChilexpressOt();
         o.setEmpresa("Dosimet");
         o.setNroOt(ot);
         o.setEstado(estado);
+        o.setTipoEntrega(tipoEntrega);
         o.setFechaEntrega(fechaEntrega);
         o.setCreadoEn(LocalDateTime.now());
         o.setActualizadoEn(LocalDateTime.now());
@@ -37,14 +38,15 @@ class ChilexpressOtRepositoryTest {
 
     @Test
     void clasificaRetiroProblemaYPendientesPorEstado() {
-        guardar("1", "EN SUCURSAL PARA RETIRO", null);
-        guardar("2", "EN RECEPCION", null);            // disponible para retiro (estado real)
-        guardar("3", "DEVUELTO A ORIGEN", null);
-        guardar("4", "EXTRAVIADO", null);
-        guardar("5", "DAÑADO", null);                  // prueba el comodín de la ñ
-        guardar("6", "EN DESCARGO", LocalDate.now());  // entregada -> no pendiente
-        guardar("7", "EN PRE-RECEPCION", null);        // creada, no recibida -> pendiente
-        guardar("8", "EN SOBRANCIA", null);            // inconveniente en despacho -> problema
+        guardar("1", "EN SUCURSAL PARA RETIRO", "OFICINA", null);
+        guardar("2", "EN RECEPCION", "OFICINA", null);   // en oficina + recepción -> retiro
+        guardar("3", "DEVUELTO A ORIGEN", "DOMICILIO", null);
+        guardar("4", "EXTRAVIADO", "DOMICILIO", null);
+        guardar("5", "DAÑADO", "DOMICILIO", null);       // prueba el comodín de la ñ
+        guardar("6", "EN DESCARGO", "DOMICILIO", LocalDate.now()); // entregada -> no pendiente
+        guardar("7", "EN PRE-RECEPCION", "OFICINA", null); // creada, no recibida -> pendiente
+        guardar("8", "EN SOBRANCIA", "DOMICILIO", null);   // inconveniente en despacho -> problema
+        guardar("9", "EN RECEPCION", "DOMICILIO", null);   // recepción pero a DOMICILIO -> NO retiro
 
         List<ChilexpressOt> retiro = repo.retiroEnSucursal();
         List<ChilexpressOt> problema = repo.conProblema();
@@ -54,27 +56,30 @@ class ChilexpressOtRepositoryTest {
         assertTrue(retiro.stream().allMatch(o -> List.of("1", "2").contains(o.getNroOt())));
         // "EN PRE-RECEPCION" NO es retiro (comparte "recepcion" pero tiene "pre").
         assertTrue(retiro.stream().noneMatch(o -> o.getNroOt().equals("7")));
+        // "EN RECEPCION" a DOMICILIO NO es retiro (va camino al domicilio).
+        assertTrue(retiro.stream().noneMatch(o -> o.getNroOt().equals("9")));
 
         assertEquals(4, problema.size());
         assertTrue(problema.stream().allMatch(o -> List.of("3", "4", "5", "8").contains(o.getNroOt())));
         // "EN SOBRANCIA" (inconveniente en despacho) también es problema.
         assertTrue(problema.stream().anyMatch(o -> o.getNroOt().equals("8")));
 
-        // Sin fecha de entrega: 1,2,3,4,5,7,8 (la 6 está entregada).
-        assertEquals(7, sinEntrega.size());
+        // Sin fecha de entrega: 1,2,3,4,5,7,8,9 (la 6 está entregada).
+        assertEquals(8, sinEntrega.size());
         assertTrue(sinEntrega.stream().noneMatch(o -> o.getNroOt().equals("6")));
         assertTrue(sinEntrega.stream().anyMatch(o -> o.getNroOt().equals("7")));
     }
 
     @Test
     void buscaPorCategoriaDeEstado() {
-        guardar("A", "EN RECEPCION", null);     // retiro
-        guardar("B", "EN PRE-RECEPCION", null); // creada
-        guardar("C", "EN CONTENEDOR", null);    // viaje
-        guardar("D", "EN DESCARGO", LocalDate.now()); // entregado
+        guardar("A", "EN RECEPCION", "OFICINA", null);      // retiro (en oficina)
+        guardar("B", "EN PRE-RECEPCION", "OFICINA", null);  // creada
+        guardar("C", "EN CONTENEDOR", "DOMICILIO", null);   // viaje
+        guardar("D", "EN DESCARGO", "DOMICILIO", LocalDate.now()); // entregado
+        guardar("E", "EN RECEPCION", "DOMICILIO", null);    // recepción a domicilio -> NO retiro
 
         var todo = org.springframework.data.domain.PageRequest.of(0, 100);
-        // 'retiro' trae EN RECEPCION pero NO EN PRE-RECEPCION.
+        // 'retiro' trae EN RECEPCION en OFICINA, pero NO EN PRE-RECEPCION ni a DOMICILIO.
         List<ChilexpressOt> retiro = repo.buscar(null, null, true, null, null, "retiro", todo);
         assertEquals(1, retiro.size());
         assertEquals("A", retiro.get(0).getNroOt());

@@ -19,7 +19,9 @@ export const getTiposPorta = () => client.get('/tipos-porta').then((r) => r.data
 export const crearTipoPorta = (data) => client.post('/tipos-porta', data).then((r) => r.data)
 export const actualizarTipoPorta = (id, data) =>
   client.put(`/tipos-porta/${id}`, data).then((r) => r.data)
-export const eliminarTipoPorta = (id) => client.delete(`/tipos-porta/${id}`)
+export const getUsoTipoPorta = (id) => client.get(`/tipos-porta/${id}/uso`).then((r) => r.data)
+export const eliminarTipoPorta = (id, confirmar = false) =>
+  client.delete(`/tipos-porta/${id}`, { params: { confirmar } })
 export const getTareas = () => client.get('/tareas').then((r) => r.data)
 export const getTareasDisponibles = (tipoDosimetroId) =>
   client
@@ -111,6 +113,7 @@ export const getEjecutivos = () => client.get('/ejecutivos').then((r) => r.data)
 export const crearEjecutivo = (data) => client.post('/ejecutivos', data).then((r) => r.data)
 export const actualizarEjecutivo = (id, data) =>
   client.put(`/ejecutivos/${id}`, data).then((r) => r.data)
+export const getUsoEjecutivo = (id) => client.get(`/ejecutivos/${id}/uso`).then((r) => r.data)
 export const desactivarEjecutivo = (id) => client.patch(`/ejecutivos/${id}/desactivar`)
 
 // --- Asignaciones ---

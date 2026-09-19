@@ -22,6 +22,9 @@ public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
     // Clientes cuyo ejecutivo responsable es el indicado (HU #3 / #16)
     List<Cliente> findByEjecutivoIdAndActivoTrueOrderByRazonSocialAsc(Integer ejecutivoId);
 
+    // Cuántos clientes activos tiene asignado un ejecutivo (aviso al desactivar).
+    long countByEjecutivoIdAndActivoTrue(Integer ejecutivoId);
+
     // #16: clientes activos filtrados por ejecutivo, empresa (vía asignaciones)
     // y texto de búsqueda (razón social o nombre fantasía). Todos opcionales.
     @Query("""
