@@ -38,26 +38,40 @@ class ClienteRepositoryTest {
     private Ejecutivo e1;
     private Empresa emp1;
     private Cliente acme;
+    private Cliente beta;   // sin asignaciones
+    private Cliente gamma;  // con asignación a OTRA empresa
+
+    private TipoDosimetro tld;
+    private TipoPorta porta;
 
     @BeforeEach
     void setUp() {
         e1 = ejecutivo("Juan");
         Ejecutivo e2 = ejecutivo("Pedro");
         emp1 = empresa("Photomat");
+        Empresa emp2 = empresa("Dosimet");
 
         acme = cliente("ACME Salud", e1);
-        cliente("Beta Minería", e2);
+        beta = cliente("Beta Minería", e2);   // no tiene ninguna asignación
+        gamma = cliente("Gamma Labs", e2);
 
-        // ACME tiene una asignación con la empresa Photomat.
-        TipoDosimetro tld = new TipoDosimetro();
+        tld = new TipoDosimetro();
         tld.setNombre("TLD");
         tld = tipoDosimetroRepository.save(tld);
-        TipoPorta porta = new TipoPorta();
+        porta = new TipoPorta();
         porta.setNombre("Porta gringo");
         porta.setTipoDosimetro(tld);
         porta = tipoPortaRepository.save(porta);
+
+        // ACME tiene una asignación con la empresa Photomat (emp1).
+        asignacion(acme, e1, emp1, 1);
+        // Gamma tiene una asignación pero con OTRA empresa (emp2).
+        asignacion(gamma, e2, emp2, 2);
+    }
+
+    private void asignacion(Cliente c, Ejecutivo ej, Empresa em, int numero) {
         Dosimetro d = new Dosimetro();
-        d.setNumero(1);
+        d.setNumero(numero);
         d.setTipoDosimetro(tld);
         d.setEstado("asignado");
         d.setFechaCreacion(LocalDate.now());
@@ -65,9 +79,9 @@ class ClienteRepositoryTest {
 
         Asignacion a = new Asignacion();
         a.setDosimetro(d);
-        a.setCliente(acme);
-        a.setEjecutivo(e1);
-        a.setEmpresa(emp1);
+        a.setCliente(c);
+        a.setEjecutivo(ej);
+        a.setEmpresa(em);
         a.setTipoPorta(porta);
         a.setTrimestre("2T2025");
         a.setFechaAsignacion(LocalDate.now());
@@ -98,28 +112,44 @@ class ClienteRepositoryTest {
 
     @Test
     void filtraPorTextoEnRazonSocial() {
-        List<Cliente> r = clienteRepository.filtrar(null, null, "acme");
+        List<Cliente> r = clienteRepository.filtrar(null, null, "acme", false);
         assertEquals(1, r.size());
         assertEquals("ACME Salud", r.get(0).getRazonSocial());
     }
 
     @Test
     void filtraPorEjecutivo() {
-        List<Cliente> r = clienteRepository.filtrar(e1.getId(), null, null);
+        List<Cliente> r = clienteRepository.filtrar(e1.getId(), null, null, false);
         assertEquals(1, r.size());
         assertEquals(e1.getId(), r.get(0).getEjecutivo().getId());
     }
 
     @Test
-    void filtraPorEmpresaViaAsignaciones() {
-        List<Cliente> r = clienteRepository.filtrar(null, emp1.getId(), null);
-        assertEquals(1, r.size());
-        assertEquals(acme.getId(), r.get(0).getId());
+    void filtraPorEmpresaIncluyeClientesSinAsignaciones() {
+        // Filtrar por emp1 devuelve: ACME (asignación a emp1) y Beta (sin
+        // asignaciones, no debe ocultarse), pero NO Gamma (asignación a otra empresa).
+        List<Cliente> r = clienteRepository.filtrar(null, emp1.getId(), null, false);
+        List<Integer> ids = r.stream().map(Cliente::getId).toList();
+        assertTrue(ids.contains(acme.getId()), "ACME (asignación a emp1) debe aparecer");
+        assertTrue(ids.contains(beta.getId()), "Beta (sin asignaciones) debe aparecer");
+        assertTrue(!ids.contains(gamma.getId()), "Gamma (asignación a otra empresa) no debe aparecer");
     }
 
     @Test
     void sinFiltrosDevuelveTodosLosActivos() {
-        List<Cliente> r = clienteRepository.filtrar(null, null, null);
-        assertTrue(r.size() >= 2);
+        List<Cliente> r = clienteRepository.filtrar(null, null, null, false);
+        assertEquals(3, r.size());
+    }
+
+    @Test
+    void incluirInactivosMuestraLosDadosDeBaja() {
+        beta.setActivo(false);
+        clienteRepository.save(beta);
+
+        List<Cliente> activos = clienteRepository.filtrar(null, null, null, false);
+        assertEquals(2, activos.size(), "sin incluirInactivos no aparece el dado de baja");
+
+        List<Cliente> todos = clienteRepository.filtrar(null, null, null, true);
+        assertEquals(3, todos.size(), "con incluirInactivos aparece también el dado de baja");
     }
 }

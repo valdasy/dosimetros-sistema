@@ -25,24 +25,30 @@ public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
     // Cuántos clientes activos tiene asignado un ejecutivo (aviso al desactivar).
     long countByEjecutivoIdAndActivoTrue(Integer ejecutivoId);
 
-    // #16: clientes activos filtrados por ejecutivo, empresa (vía asignaciones)
-    // y texto de búsqueda (razón social o nombre fantasía). Todos opcionales.
+    // #16: clientes filtrados por ejecutivo, empresa (vía asignaciones) y texto
+    // de búsqueda (razón social o nombre fantasía). Todos opcionales.
+    // incluirInactivos=true muestra también los clientes dados de baja.
+    // El filtro por empresa NO oculta a los clientes que aún no tienen ninguna
+    // asignación (clientes nuevos): la empresa se deduce de las asignaciones, así
+    // que un cliente sin asignaciones se muestra siempre.
     @Query("""
         SELECT c FROM Cliente c
-        WHERE c.activo = true
+        WHERE (:incluirInactivos = true OR c.activo = true)
           AND (:ejecutivoId IS NULL OR c.ejecutivo.id = :ejecutivoId)
           AND (:q IS NULL
                OR LOWER(c.razonSocial) LIKE LOWER(CONCAT('%', :q, '%'))
                OR LOWER(COALESCE(c.nombreCorto, '')) LIKE LOWER(CONCAT('%', :q, '%')))
-          AND (:empresaId IS NULL OR EXISTS (
-               SELECT 1 FROM Asignacion a
-               WHERE a.cliente.id = c.id AND a.empresa.id = :empresaId))
+          AND (:empresaId IS NULL
+               OR EXISTS (SELECT 1 FROM Asignacion a
+                          WHERE a.cliente.id = c.id AND a.empresa.id = :empresaId)
+               OR NOT EXISTS (SELECT 1 FROM Asignacion a3 WHERE a3.cliente.id = c.id))
         ORDER BY c.razonSocial ASC
     """)
     List<Cliente> filtrar(
             @Param("ejecutivoId") Integer ejecutivoId,
             @Param("empresaId") Integer empresaId,
-            @Param("q") String q
+            @Param("q") String q,
+            @Param("incluirInactivos") boolean incluirInactivos
     );
 
     // Ids de clientes que actualmente son el último destino de algún dosímetro

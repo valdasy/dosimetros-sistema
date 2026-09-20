@@ -4,6 +4,9 @@ import {
   crearCliente,
   actualizarCliente,
   desactivarCliente,
+  reactivarCliente,
+  getUsoCliente,
+  eliminarCliente,
   getEjecutivos,
   getEmpresas,
   getResumenPortaTrimestreCliente,
@@ -28,7 +31,7 @@ export default function Clientes() {
   const [clientes, setClientes] = useState([])
   const [ejecutivos, setEjecutivos] = useState([])
   const [empresas, setEmpresas] = useState([])
-  const [filtros, setFiltros] = useState({ q: '', ejecutivoId: '', empresaId: '' })
+  const [filtros, setFiltros] = useState({ q: '', ejecutivoId: '', empresaId: '', incluirInactivos: false })
   const VACIO = { razonSocial: '', nombreCorto: '', rut: '', ejecutivoId: '' }
   const [form, setForm] = useState(VACIO)
   const [editId, setEditId] = useState(null)
@@ -36,6 +39,7 @@ export default function Clientes() {
   const [page, setPage] = useState(1)
   const [detalle, setDetalle] = useState(null) // { cliente, resumen, loading }
   const [aBaja, setABaja] = useState(null) // cliente | null
+  const [aEliminar, setAEliminar] = useState(null) // { cliente, uso } | null
   const [procesando, setProcesando] = useState(false)
   const toast = useToast()
 
@@ -44,6 +48,7 @@ export default function Clientes() {
     if (f.q) params.q = f.q
     if (f.ejecutivoId) params.ejecutivoId = f.ejecutivoId
     if (f.empresaId) params.empresaId = f.empresaId
+    if (f.incluirInactivos) params.incluirInactivos = true
     setLoading(true)
     return getClientes(params)
       .then((data) => {
@@ -134,6 +139,42 @@ export default function Clientes() {
     }
   }
 
+  const reactivar = async (c) => {
+    try {
+      await reactivarCliente(c.id)
+      toast.success('Cliente reactivado')
+      cargar()
+    } catch {
+      toast.error('No se pudo reactivar')
+    }
+  }
+
+  // Eliminar (borrado físico): primero consulta el uso; si tiene asignaciones se
+  // bloquea (hay que desactivar en su lugar).
+  const pedirEliminar = async (c) => {
+    try {
+      const uso = await getUsoCliente(c.id)
+      setAEliminar({ cliente: c, uso })
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo verificar el cliente')
+    }
+  }
+
+  const confirmarEliminar = async () => {
+    if (!aEliminar) return
+    setProcesando(true)
+    try {
+      await eliminarCliente(aEliminar.cliente.id)
+      toast.success('Cliente eliminado')
+      setAEliminar(null)
+      cargar()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo eliminar')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
   const verDetalle = async (cliente) => {
     setDetalle({ cliente, resumen: [], loading: true })
     try {
@@ -193,10 +234,10 @@ export default function Clientes() {
       <Card
         title="Filtrar clientes"
         action={
-          (filtros.q || filtros.ejecutivoId || filtros.empresaId) && (
+          (filtros.q || filtros.ejecutivoId || filtros.empresaId || filtros.incluirInactivos) && (
             <button
               type="button"
-              onClick={() => { const v = { q: '', ejecutivoId: '', empresaId: '' }; setFiltros(v); cargar(v) }}
+              onClick={() => { const v = { q: '', ejecutivoId: '', empresaId: '', incluirInactivos: false }; setFiltros(v); cargar(v) }}
               className="text-sm text-steel hover:underline"
             >
               Limpiar filtros
@@ -227,6 +268,14 @@ export default function Clientes() {
               ))}
             </Select>
           </div>
+          <label className="flex items-center gap-2 text-sm text-ink/70 mt-3">
+            <input
+              type="checkbox"
+              checked={filtros.incluirInactivos}
+              onChange={(e) => { const v = { ...filtros, incluirInactivos: e.target.checked }; setFiltros(v); cargar(v) }}
+            />
+            Mostrar clientes inactivos (dados de baja)
+          </label>
         </form>
       </Card>
 
@@ -242,6 +291,7 @@ export default function Clientes() {
                   <th className="py-2 font-medium">Nombre fantasía</th>
                   <th className="py-2 font-medium">RUT</th>
                   <th className="py-2 font-medium">Responsable</th>
+                  <th className="py-2 font-medium">Estado</th>
                   <th className="py-2"></th>
                 </tr>
               </thead>
@@ -256,33 +306,43 @@ export default function Clientes() {
                     <td className="py-2.5 text-slate-600">{c.nombreCorto || '—'}</td>
                     <td className="py-2.5 text-slate-600">{c.rut || '—'}</td>
                     <td className="py-2.5 text-slate-600">{c.ejecutivoNombre || '—'}</td>
-                    <td className="py-2.5 text-right space-x-3">
+                    <td className="py-2.5">
+                      <Badge color={c.activo ? 'green' : 'red'}>{c.activo ? 'Activo' : 'Inactivo'}</Badge>
+                    </td>
+                    <td className="py-2.5 text-right space-x-3 whitespace-nowrap">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          editar(c)
-                        }}
+                        onClick={(e) => { e.stopPropagation(); editar(c) }}
                         className="text-steel hover:underline text-sm"
                       >
                         Editar
                       </button>
-                      {c.activo && (
+                      {c.activo ? (
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setABaja(c)
-                          }}
+                          onClick={(e) => { e.stopPropagation(); setABaja(c) }}
                           className="text-red-600 hover:underline text-sm"
                         >
                           Desactivar
                         </button>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); reactivar(c) }}
+                          className="text-emerald-600 hover:underline text-sm"
+                        >
+                          Reactivar
+                        </button>
                       )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); pedirEliminar(c) }}
+                        className="text-red-600 hover:underline text-sm"
+                      >
+                        Eliminar
+                      </button>
                     </td>
                   </tr>
                 ))}
                 {clientes.length === 0 && (
                   <tr>
-                    <td colSpan="5">
+                    <td colSpan="6">
                       <EmptyState>No hay clientes registrados</EmptyState>
                     </td>
                   </tr>
@@ -351,7 +411,7 @@ export default function Clientes() {
         open={!!aBaja}
         title="Desactivar cliente"
         mensaje={aBaja ? `¿Desactivar el cliente "${aBaja.razonSocial}"?` : ''}
-        detalle="No se borra su histórico de asignaciones. Dejará de aparecer en los listados de clientes activos, pero su información se conserva."
+        detalle="No se borra su histórico de asignaciones. Dejará de aparecer en los listados de clientes activos, pero su información se conserva. Podrás reactivarlo cuando quieras."
         detalleTipo="info"
         confirmLabel="Desactivar"
         tone="danger"
@@ -359,6 +419,35 @@ export default function Clientes() {
         onConfirm={confirmarDesactivar}
         onCancel={() => setABaja(null)}
       />
+
+      {(() => {
+        const bloqueado = aEliminar && aEliminar.uso.asignaciones > 0
+        return (
+          <ConfirmDialog
+            open={!!aEliminar}
+            title="Eliminar cliente"
+            mensaje={
+              !aEliminar ? '' :
+              bloqueado
+                ? `No se puede eliminar "${aEliminar.cliente.razonSocial}": tiene ${aEliminar.uso.asignaciones} asignación(es) en el histórico.`
+                : `¿Eliminar definitivamente el cliente "${aEliminar.cliente.razonSocial}"?`
+            }
+            detalle={
+              !aEliminar ? '' :
+              bloqueado
+                ? 'Para no perder ese historial, usa "Desactivar" en vez de eliminar.'
+                : 'No tiene asignaciones asociadas. Esta acción borra el cliente por completo y no se puede deshacer.'
+            }
+            detalleTipo={bloqueado ? 'error' : 'info'}
+            confirmLabel={bloqueado ? 'Entendido' : 'Eliminar'}
+            cancelLabel={bloqueado ? 'Cerrar' : 'Cancelar'}
+            tone={bloqueado ? 'primary' : 'danger'}
+            loading={procesando}
+            onConfirm={bloqueado ? () => setAEliminar(null) : confirmarEliminar}
+            onCancel={() => setAEliminar(null)}
+          />
+        )
+      })()}
     </div>
   )
 }

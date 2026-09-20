@@ -26,6 +26,9 @@ public interface AsignacionRepository extends JpaRepository<Asignacion, Integer>
     // Cuántas asignaciones (histórico) tiene un ejecutivo (aviso al desactivar).
     long countByEjecutivoId(Integer ejecutivoId);
 
+    // Cuántas asignaciones (histórico) tiene un cliente (protege el borrado físico).
+    long countByClienteId(Integer clienteId);
+
     List<Asignacion> findByEjecutivoIdOrderByTrimestreDescFechaAsignacionDesc(Integer ejecutivoId);
 
     List<Asignacion> findByClienteIdOrderByFechaAsignacionDesc(Integer clienteId);
