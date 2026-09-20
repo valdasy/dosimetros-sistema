@@ -9,6 +9,7 @@ public class AsignacionResponse {
     private Integer numeroDosimetro;
     private Integer clienteId;
     private String clienteNombre;
+    private String clienteNombreCorto;
     private Integer ejecutivoId;
     private String ejecutivoNombre;
     private Integer empresaId;
@@ -104,6 +105,14 @@ public class AsignacionResponse {
 
     public void setClienteNombre(String clienteNombre) {
         this.clienteNombre = clienteNombre;
+    }
+
+    public String getClienteNombreCorto() {
+        return clienteNombreCorto;
+    }
+
+    public void setClienteNombreCorto(String clienteNombreCorto) {
+        this.clienteNombreCorto = clienteNombreCorto;
     }
 
     public Integer getEjecutivoId() {

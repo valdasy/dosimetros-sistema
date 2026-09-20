@@ -561,7 +561,7 @@ public class AsignacionService {
     public List<ConteoClienteTrimestreResponse> conteoPorClienteTrimestre(Integer ejecutivoId) {
         return asignacionRepository.conteoPorClienteTrimestre(ejecutivoId).stream()
                 .map(o -> new ConteoClienteTrimestreResponse(
-                        (Integer) o[0], (String) o[1], (String) o[2], ((Number) o[3]).longValue()))
+                        (Integer) o[0], (String) o[1], (String) o[2], (String) o[3], ((Number) o[4]).longValue()))
                 .toList();
     }
 
@@ -727,6 +727,7 @@ public class AsignacionService {
                 a.getFechaAsignacion(),
                 a.getLinkTrello()
         );
+        r.setClienteNombreCorto(a.getCliente().getNombreCorto());
         r.setEnviado(a.isEnviado());
         r.setFechaEnvio(a.getFechaEnvio());
         return r;

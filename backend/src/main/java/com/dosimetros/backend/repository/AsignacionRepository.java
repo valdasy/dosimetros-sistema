@@ -118,10 +118,10 @@ public interface AsignacionRepository extends JpaRepository<Asignacion, Integer>
     // #18: conteo de asignaciones por cliente y trimestre (comparación por
     // trimestres / pendiente de asignación). Opcionalmente acotado a un ejecutivo.
     @Query("""
-        SELECT a.cliente.id, a.cliente.razonSocial, a.trimestre, COUNT(a)
+        SELECT a.cliente.id, a.cliente.razonSocial, a.cliente.nombreCorto, a.trimestre, COUNT(a)
         FROM Asignacion a
         WHERE (:ejecutivoId IS NULL OR a.ejecutivo.id = :ejecutivoId)
-        GROUP BY a.cliente.id, a.cliente.razonSocial, a.trimestre
+        GROUP BY a.cliente.id, a.cliente.razonSocial, a.cliente.nombreCorto, a.trimestre
     """)
     List<Object[]> conteoPorClienteTrimestre(@Param("ejecutivoId") Integer ejecutivoId);
 

@@ -67,7 +67,7 @@ export default function MisDosimetros() {
   // Carga la lista de clientes para el buscador (según el rol).
   useEffect(() => {
     const p = esEjecutivo ? getMisClientes() : getClientes()
-    p.then((cs) => setClientes(cs.map((c) => ({ value: c.id, label: c.razonSocial }))))
+    p.then((cs) => setClientes(cs.map((c) => ({ value: c.id, label: c.razonSocial, nombreCorto: c.nombreCorto }))))
       .catch((err) =>
         setError(
           err.response?.status === 409
@@ -226,13 +226,22 @@ export default function MisDosimetros() {
       {error && <Alert type="error">{error}</Alert>}
 
       <Card title="Cliente">
-        <div className="max-w-md">
+        {/* Dos buscadores separados para el mismo cliente: por razón social y por
+            nombre de fantasía. Elegir en cualquiera selecciona el mismo cliente. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
           <Combobox
-            label="Cliente"
+            label="Cliente (razón social)"
             options={clientes}
             value={clienteId}
             onChange={elegirCliente}
-            placeholder="Escribe para buscar…"
+            placeholder="Buscar por razón social…"
+          />
+          <Combobox
+            label="Cliente (nombre fantasía)"
+            options={clientes.filter((c) => c.nombreCorto).map((c) => ({ value: c.value, label: c.nombreCorto }))}
+            value={clienteId}
+            onChange={elegirCliente}
+            placeholder="Buscar por nombre de fantasía…"
           />
         </div>
       </Card>

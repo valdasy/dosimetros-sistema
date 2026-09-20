@@ -39,8 +39,11 @@ export function construirResumenTexto(asignaciones) {
     const rangos = comprimirRangos(g.slots)
     return `- Tarea ${g.tarea} · ${band}${rangos ? `: slots ${rangos}` : ''}`
   })
+  const nombreCliente = a0.clienteNombreCorto
+    ? `${a0.clienteNombre} (${a0.clienteNombreCorto})`
+    : a0.clienteNombre
   return [
-    `Cliente: ${a0.clienteNombre} — Trimestre: ${a0.trimestre}`,
+    `Cliente: ${nombreCliente} — Trimestre: ${a0.trimestre}`,
     `Dosímetros asignados: ${asignaciones.length}`,
     'Tareas ocupadas:',
     ...lineas,

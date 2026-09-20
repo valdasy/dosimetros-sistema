@@ -24,8 +24,14 @@ export default function PendienteAsignacion() {
   const [trimestresSel, setTrimestresSel] = useState(() => new Set()) // vacío = todos (los disponibles)
   const [busqueda, setBusqueda] = useState('')
   const [soloPendientes, setSoloPendientes] = useState(false)
+  const [vista, setVista] = useState('razon') // 'razon' | 'fantasia' (nombre a mostrar)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+
+  // Nombre a mostrar según la vista (fantasía cae a razón social si no tiene).
+  const nombreMostrar = (c) => (vista === 'fantasia' ? (c.nombreCorto || c.razonSocial) : c.razonSocial)
+  // Texto para buscar: razón social + fantasía.
+  const textoBusqueda = (c) => `${c.razonSocial} ${c.nombreCorto || ''}`.toLowerCase()
 
   useEffect(() => {
     if (!esEjecutivo) getEjecutivos().then(setEjecutivos).catch(() => {})
@@ -69,7 +75,7 @@ export default function PendienteAsignacion() {
     const map = new Map()
     for (const c of conteos) {
       if (!map.has(c.clienteId)) {
-        map.set(c.clienteId, { id: c.clienteId, razonSocial: c.razonSocial })
+        map.set(c.clienteId, { id: c.clienteId, razonSocial: c.razonSocial, nombreCorto: c.nombreCorto })
       }
     }
     return [...map.values()]
@@ -112,7 +118,7 @@ export default function PendienteAsignacion() {
   const filas = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
     let lista = clientesDeConteo
-    if (q) lista = lista.filter((c) => c.razonSocial.toLowerCase().includes(q))
+    if (q) lista = lista.filter((c) => textoBusqueda(c).includes(q))
     // Excluye a los clientes que no tuvieron asignación en el trimestre base.
     if (base) lista = lista.filter((c) => (porCliente.get(c.id)?.[base] || 0) > 0)
     // Opcional: solo los que hoy están pendientes en el trimestre actual.
@@ -137,7 +143,7 @@ export default function PendienteAsignacion() {
     const q = busqueda.trim().toLowerCase()
     const pendientesIds = new Set()
     for (const c of clientesDeConteo) {
-      if (q && !c.razonSocial.toLowerCase().includes(q)) continue
+      if (q && !textoBusqueda(c).includes(q)) continue
       const cc = porCliente.get(c.id) || {}
       if ((cc[base] || 0) > 0 && !((cc[colActual] || 0) > 0)) pendientesIds.add(c.id)
     }
@@ -175,7 +181,7 @@ export default function PendienteAsignacion() {
     const encabezados = ['Cliente', ...columnas]
     const lineas = filas.map((c) => {
       const conteo = porCliente.get(c.id) || {}
-      const celdas = [c.razonSocial, ...columnas.map((t) => {
+      const celdas = [nombreMostrar(c), ...columnas.map((t) => {
         const n = conteo[t] || 0
         return n > 0 ? n : 'Pendiente'
       })]
@@ -208,7 +214,7 @@ export default function PendienteAsignacion() {
       <Card title="Filtros">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Input label="Buscar cliente" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Razón social…" />
+            <Input label="Buscar cliente" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Razón social o nombre de fantasía…" />
             {!esEjecutivo && (
               <Select label="Ejecutivo" value={ejecutivoId} onChange={(e) => setEjecutivoId(e.target.value)}>
                 <option value="">Todos los ejecutivos</option>
@@ -270,13 +276,30 @@ export default function PendienteAsignacion() {
       <Card
         title={`Clientes (${filas.length})`}
         action={
-          <Button
-            variant="secondary"
-            onClick={exportarClientes}
-            disabled={loading || columnas.length === 0 || filas.length === 0}
-          >
-            Exportar clientes
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="inline-flex rounded-lg border border-mist overflow-hidden text-sm">
+              {[
+                { k: 'razon', l: 'Razón social' },
+                { k: 'fantasia', l: 'Nombre fantasía' },
+              ].map((op) => (
+                <button
+                  key={op.k}
+                  type="button"
+                  onClick={() => setVista(op.k)}
+                  className={`px-3 py-1.5 ${vista === op.k ? 'bg-steel text-white' : 'bg-white text-ink/70 hover:bg-mist/20'}`}
+                >
+                  {op.l}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={exportarClientes}
+              disabled={loading || columnas.length === 0 || filas.length === 0}
+            >
+              Exportar clientes
+            </Button>
+          </div>
         }
       >
         {loading ? (
@@ -303,7 +326,7 @@ export default function PendienteAsignacion() {
                   const conteo = porCliente.get(c.id) || {}
                   return (
                     <tr key={c.id} className="border-b border-slate-100">
-                      <td className="py-2 pr-4 font-medium text-ink sticky left-0 bg-white">{c.razonSocial}</td>
+                      <td className="py-2 pr-4 font-medium text-ink sticky left-0 bg-white">{nombreMostrar(c)}</td>
                       {columnas.map((t) => {
                         const n = conteo[t] || 0
                         return (

@@ -178,12 +178,22 @@ export default function Asignar() {
   // --- Campos comunes (cliente, ejecutivo, empresa, porta, trimestre, link) ---
   const CamposComunes = (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Dos buscadores separados para el mismo cliente: por razón social y por
+          nombre de fantasía. Elegir en cualquiera selecciona el mismo cliente. */}
       <Combobox
-        label="Cliente"
+        label="Cliente (razón social)"
         options={clientes.map((c) => ({ value: c.id, label: c.razonSocial }))}
         value={datos.clienteId}
         onChange={setCombo('clienteId')}
+        placeholder="Buscar por razón social…"
         required
+      />
+      <Combobox
+        label="Cliente (nombre fantasía)"
+        options={clientes.filter((c) => c.nombreCorto).map((c) => ({ value: c.id, label: c.nombreCorto }))}
+        value={datos.clienteId}
+        onChange={setCombo('clienteId')}
+        placeholder="Buscar por nombre de fantasía…"
       />
       <Combobox
         label="Ejecutivo"

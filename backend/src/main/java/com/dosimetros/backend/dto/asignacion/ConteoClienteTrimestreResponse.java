@@ -9,17 +9,28 @@ public class ConteoClienteTrimestreResponse {
 
     private Integer clienteId;
     private String razonSocial;
+    private String nombreCorto;
     private String trimestre;
     private long cantidad;
 
     public ConteoClienteTrimestreResponse() {
     }
 
-    public ConteoClienteTrimestreResponse(Integer clienteId, String razonSocial, String trimestre, long cantidad) {
+    public ConteoClienteTrimestreResponse(Integer clienteId, String razonSocial, String nombreCorto,
+                                          String trimestre, long cantidad) {
         this.clienteId = clienteId;
         this.razonSocial = razonSocial;
+        this.nombreCorto = nombreCorto;
         this.trimestre = trimestre;
         this.cantidad = cantidad;
+    }
+
+    public String getNombreCorto() {
+        return nombreCorto;
+    }
+
+    public void setNombreCorto(String nombreCorto) {
+        this.nombreCorto = nombreCorto;
     }
 
     public Integer getClienteId() {
