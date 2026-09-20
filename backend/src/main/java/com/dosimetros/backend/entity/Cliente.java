@@ -16,6 +16,9 @@ public class Cliente {
     @Column(name = "nombre_corto", length = 200)
     private String nombreCorto;
 
+    @Column(length = 20)
+    private String rut;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ejecutivo_id")
     private Ejecutivo ejecutivo;
@@ -56,6 +59,14 @@ public class Cliente {
 
     public void setNombreCorto(String nombreCorto) {
         this.nombreCorto = nombreCorto;
+    }
+
+    public String getRut() {
+        return rut;
+    }
+
+    public void setRut(String rut) {
+        this.rut = rut;
     }
 
     public Boolean getActivo() {

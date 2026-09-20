@@ -30,6 +30,18 @@ public interface AsignacionRepository extends JpaRepository<Asignacion, Integer>
 
     List<Asignacion> findByClienteIdOrderByFechaAsignacionDesc(Integer clienteId);
 
+    // Resumen de un cliente: total de dosímetros por trimestre y tipo de porta
+    // (para el detalle del cliente sin listar todos los dosímetros).
+    // Devuelve [trimestre, tipoPortaNombre, cantidad], del trimestre más reciente.
+    @Query("""
+        SELECT a.trimestre, tp.nombre, COUNT(a)
+        FROM Asignacion a JOIN a.tipoPorta tp
+        WHERE a.cliente.id = :clienteId
+        GROUP BY a.trimestre, tp.nombre
+        ORDER BY SUBSTRING(a.trimestre, 3, 4) DESC, SUBSTRING(a.trimestre, 1, 1) DESC, tp.nombre ASC
+    """)
+    List<Object[]> resumenPortaTrimestrePorCliente(@Param("clienteId") Integer clienteId);
+
     // Vista ejecutivo con multifiltros (todos opcionales).
     @Query("""
         SELECT a FROM Asignacion a

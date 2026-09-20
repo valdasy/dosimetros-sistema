@@ -102,6 +102,9 @@ export const actualizarCliente = (id, data) =>
 export const desactivarCliente = (id) => client.patch(`/clientes/${id}/desactivar`)
 export const getAsignacionesPorCliente = (clienteId) =>
   client.get(`/asignaciones/cliente/${clienteId}`).then((r) => r.data)
+// Detalle del cliente: total por trimestre y tipo de porta (no todos los dosímetros).
+export const getResumenPortaTrimestreCliente = (clienteId) =>
+  client.get(`/asignaciones/cliente/${clienteId}/resumen-porta-trimestre`).then((r) => r.data)
 // Trimestres (distintos) de un cliente, para los chips de filtro sin traer todo.
 export const getTrimestresCliente = (clienteId) =>
   client.get(`/asignaciones/cliente/${clienteId}/trimestres`).then((r) => r.data)

@@ -102,6 +102,15 @@ public class AsignacionService {
         return asignacionRepository.trimestresDeCliente(clienteId, ejecutivoId);
     }
 
+    // Resumen de un cliente: total por trimestre y tipo de porta (detalle del cliente).
+    public List<com.dosimetros.backend.dto.cliente.ResumenPortaTrimestreResponse>
+            resumenPortaTrimestrePorCliente(Integer clienteId) {
+        return asignacionRepository.resumenPortaTrimestrePorCliente(clienteId).stream()
+                .map(r -> new com.dosimetros.backend.dto.cliente.ResumenPortaTrimestreResponse(
+                        (String) r[0], (String) r[1], ((Number) r[2]).longValue()))
+                .toList();
+    }
+
     // Vista ejecutivo con multifiltros (todos opcionales).
     public List<AsignacionResponse> filtrarPorEjecutivo(
             Integer ejecutivoId, Integer clienteId, String trimestre, java.time.LocalDate fecha,

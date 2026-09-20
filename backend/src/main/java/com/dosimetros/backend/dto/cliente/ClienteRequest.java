@@ -12,6 +12,9 @@ public class ClienteRequest {
     @Size(max = 200, message = "El nombre corto no puede superar 200 caracteres")
     private String nombreCorto;
 
+    @Size(max = 20, message = "El RUT no puede superar 20 caracteres")
+    private String rut;
+
     // Ejecutivo responsable del cliente (opcional).
     private Integer ejecutivoId;
 
@@ -40,5 +43,13 @@ public class ClienteRequest {
 
     public void setNombreCorto(String nombreCorto) {
         this.nombreCorto = nombreCorto;
+    }
+
+    public String getRut() {
+        return rut;
+    }
+
+    public void setRut(String rut) {
+        this.rut = rut;
     }
 }

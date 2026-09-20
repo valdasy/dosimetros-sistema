@@ -5,6 +5,7 @@ public class ClienteResponse {
     private Integer id;
     private String razonSocial;
     private String nombreCorto;
+    private String rut;
     private Boolean activo;
     private Integer ejecutivoId;
     private String ejecutivoNombre;
@@ -14,11 +15,12 @@ public class ClienteResponse {
     public ClienteResponse() {
     }
 
-    public ClienteResponse(Integer id, String razonSocial, String nombreCorto, Boolean activo,
+    public ClienteResponse(Integer id, String razonSocial, String nombreCorto, String rut, Boolean activo,
                            Integer ejecutivoId, String ejecutivoNombre, Boolean pendienteAsignacion) {
         this.id = id;
         this.razonSocial = razonSocial;
         this.nombreCorto = nombreCorto;
+        this.rut = rut;
         this.activo = activo;
         this.ejecutivoId = ejecutivoId;
         this.ejecutivoNombre = ejecutivoNombre;
@@ -47,6 +49,14 @@ public class ClienteResponse {
 
     public void setNombreCorto(String nombreCorto) {
         this.nombreCorto = nombreCorto;
+    }
+
+    public String getRut() {
+        return rut;
+    }
+
+    public void setRut(String rut) {
+        this.rut = rut;
     }
 
     public Boolean getActivo() {

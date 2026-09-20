@@ -62,6 +62,7 @@ public class ClienteService {
         Cliente cliente = new Cliente();
         cliente.setRazonSocial(request.getRazonSocial());
         cliente.setNombreCorto(request.getNombreCorto());
+        cliente.setRut(request.getRut());
         cliente.setEjecutivo(resolverEjecutivo(request.getEjecutivoId()));
         cliente.setActivo(true);
 
@@ -74,6 +75,7 @@ public class ClienteService {
 
         cliente.setRazonSocial(request.getRazonSocial());
         cliente.setNombreCorto(request.getNombreCorto());
+        cliente.setRut(request.getRut());
         cliente.setEjecutivo(resolverEjecutivo(request.getEjecutivoId()));
 
         return toResponse(clienteRepository.save(cliente), clientesConDosimetroVigente());
@@ -103,6 +105,7 @@ public class ClienteService {
                 cliente.getId(),
                 cliente.getRazonSocial(),
                 cliente.getNombreCorto(),
+                cliente.getRut(),
                 cliente.getActivo(),
                 cliente.getEjecutivo() != null ? cliente.getEjecutivo().getId() : null,
                 cliente.getEjecutivo() != null ? cliente.getEjecutivo().getNombre() : null,

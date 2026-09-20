@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import {
   getClientes,
   crearCliente,
+  actualizarCliente,
   desactivarCliente,
   getEjecutivos,
   getEmpresas,
-  getAsignacionesPorCliente,
+  getResumenPortaTrimestreCliente,
 } from '../api/endpoints'
 import {
   Card,
@@ -28,10 +29,12 @@ export default function Clientes() {
   const [ejecutivos, setEjecutivos] = useState([])
   const [empresas, setEmpresas] = useState([])
   const [filtros, setFiltros] = useState({ q: '', ejecutivoId: '', empresaId: '' })
-  const [form, setForm] = useState({ razonSocial: '', nombreCorto: '', ejecutivoId: '' })
+  const VACIO = { razonSocial: '', nombreCorto: '', rut: '', ejecutivoId: '' }
+  const [form, setForm] = useState(VACIO)
+  const [editId, setEditId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [detalle, setDetalle] = useState(null) // { cliente, asignaciones, loading }
+  const [detalle, setDetalle] = useState(null) // { cliente, resumen, loading }
   const [aBaja, setABaja] = useState(null) // cliente | null
   const [procesando, setProcesando] = useState(false)
   const toast = useToast()
@@ -77,19 +80,42 @@ export default function Clientes() {
     cargar(next)
   }
 
-  const handleCrear = async (e) => {
+  const resetForm = () => {
+    setForm(VACIO)
+    setEditId(null)
+  }
+
+  const editar = (c) => {
+    setEditId(c.id)
+    setForm({
+      razonSocial: c.razonSocial || '',
+      nombreCorto: c.nombreCorto || '',
+      rut: c.rut || '',
+      ejecutivoId: c.ejecutivoId ? String(c.ejecutivoId) : '',
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleGuardar = async (e) => {
     e.preventDefault()
+    const payload = {
+      razonSocial: form.razonSocial,
+      nombreCorto: form.nombreCorto || null,
+      rut: form.rut || null,
+      ejecutivoId: form.ejecutivoId ? Number(form.ejecutivoId) : null,
+    }
     try {
-      await crearCliente({
-        razonSocial: form.razonSocial,
-        nombreCorto: form.nombreCorto || null,
-        ejecutivoId: form.ejecutivoId ? Number(form.ejecutivoId) : null,
-      })
-      setForm({ razonSocial: '', nombreCorto: '', ejecutivoId: '' })
-      toast.success('Cliente creado correctamente')
+      if (editId) {
+        await actualizarCliente(editId, payload)
+        toast.success('Cliente actualizado')
+      } else {
+        await crearCliente(payload)
+        toast.success('Cliente creado correctamente')
+      }
+      resetForm()
       cargar()
-    } catch {
-      toast.error('No se pudo crear el cliente')
+    } catch (err) {
+      toast.error(err.response?.data?.message || (editId ? 'No se pudo actualizar' : 'No se pudo crear el cliente'))
     }
   }
 
@@ -109,12 +135,12 @@ export default function Clientes() {
   }
 
   const verDetalle = async (cliente) => {
-    setDetalle({ cliente, asignaciones: [], loading: true })
+    setDetalle({ cliente, resumen: [], loading: true })
     try {
-      const asignaciones = await getAsignacionesPorCliente(cliente.id)
-      setDetalle({ cliente, asignaciones, loading: false })
+      const resumen = await getResumenPortaTrimestreCliente(cliente.id)
+      setDetalle({ cliente, resumen, loading: false })
     } catch {
-      setDetalle({ cliente, asignaciones: [], loading: false })
+      setDetalle({ cliente, resumen: [], loading: false })
       toast.error('No se pudo cargar el detalle')
     }
   }
@@ -126,8 +152,8 @@ export default function Clientes() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-ink">Clientes</h1>
 
-      <Card title="Nuevo cliente">
-        <form onSubmit={handleCrear} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <Card title={editId ? `Editar cliente: ${form.razonSocial}` : 'Nuevo cliente'}>
+        <form onSubmit={handleGuardar} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           <Input
             label="Razón social"
             value={form.razonSocial}
@@ -139,6 +165,12 @@ export default function Clientes() {
             value={form.nombreCorto}
             onChange={(e) => setForm({ ...form, nombreCorto: e.target.value })}
           />
+          <Input
+            label="RUT"
+            value={form.rut}
+            onChange={(e) => setForm({ ...form, rut: e.target.value })}
+            placeholder="Ej. 76.123.456-7"
+          />
           <Select
             label="Ejecutivo responsable"
             value={form.ejecutivoId}
@@ -149,7 +181,12 @@ export default function Clientes() {
               <option key={ej.id} value={ej.id}>{ej.nombre}</option>
             ))}
           </Select>
-          <Button type="submit">Crear cliente</Button>
+          <div className="flex gap-2">
+            <Button type="submit">{editId ? 'Guardar cambios' : 'Crear cliente'}</Button>
+            {editId && (
+              <Button type="button" variant="secondary" onClick={resetForm}>Cancelar</Button>
+            )}
+          </div>
         </form>
       </Card>
 
@@ -203,8 +240,8 @@ export default function Clientes() {
                 <tr className="text-left text-slate-500 border-b border-slate-200">
                   <th className="py-2 font-medium">Razón social</th>
                   <th className="py-2 font-medium">Nombre fantasía</th>
+                  <th className="py-2 font-medium">RUT</th>
                   <th className="py-2 font-medium">Responsable</th>
-                  <th className="py-2 font-medium">Estado asignación</th>
                   <th className="py-2"></th>
                 </tr>
               </thead>
@@ -217,15 +254,18 @@ export default function Clientes() {
                   >
                     <td className="py-2.5 font-medium text-ink">{c.razonSocial}</td>
                     <td className="py-2.5 text-slate-600">{c.nombreCorto || '—'}</td>
+                    <td className="py-2.5 text-slate-600">{c.rut || '—'}</td>
                     <td className="py-2.5 text-slate-600">{c.ejecutivoNombre || '—'}</td>
-                    <td className="py-2.5">
-                      {c.pendienteAsignacion ? (
-                        <Badge color="amber">Pendiente de asignación</Badge>
-                      ) : (
-                        <Badge color="green">Con dosímetros</Badge>
-                      )}
-                    </td>
-                    <td className="py-2.5 text-right">
+                    <td className="py-2.5 text-right space-x-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          editar(c)
+                        }}
+                        className="text-steel hover:underline text-sm"
+                      >
+                        Editar
+                      </button>
                       {c.activo && (
                         <button
                           onClick={(e) => {
@@ -260,49 +300,47 @@ export default function Clientes() {
             {detalle.cliente.nombreCorto && (
               <Badge color="slate">{detalle.cliente.nombreCorto}</Badge>
             )}
-            <Badge color="blue">Responsable: {detalle.cliente.ejecutivoNombre || '—'}</Badge>
-            {detalle.cliente.pendienteAsignacion ? (
-              <Badge color="amber">Pendiente de asignación</Badge>
-            ) : (
-              <Badge color="green">Con dosímetros</Badge>
+            {detalle.cliente.rut && (
+              <Badge color="slate">RUT: {detalle.cliente.rut}</Badge>
             )}
+            <Badge color="blue">Responsable: {detalle.cliente.ejecutivoNombre || '—'}</Badge>
           </div>
 
           <h3 className="text-sm font-semibold text-ink mb-2">
-            Dosímetros asignados · {detalle.asignaciones.length}
+            Total de dosímetros por trimestre y tipo de porta
           </h3>
 
           {detalle.loading ? (
             <Loading />
-          ) : detalle.asignaciones.length === 0 ? (
+          ) : detalle.resumen.length === 0 ? (
             <EmptyState>Este cliente no tiene dosímetros asignados</EmptyState>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-slate-500 border-b border-slate-200">
-                    <th className="py-2 font-medium">N° dosímetro</th>
                     <th className="py-2 font-medium">Trimestre</th>
-                    <th className="py-2 font-medium">Fecha</th>
-                    <th className="py-2 font-medium">Porta</th>
-                    <th className="py-2 font-medium">Empresa</th>
-                    <th className="py-2 font-medium">Bandeja/Slot</th>
+                    <th className="py-2 font-medium">Tipo de porta</th>
+                    <th className="py-2 font-medium text-right">Cantidad</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {detalle.asignaciones.map((a) => (
-                    <tr key={a.id} className="border-b border-slate-100">
-                      <td className="py-2 font-medium text-ink">{a.numeroDosimetro}</td>
-                      <td className="py-2 text-slate-600">{a.trimestre}</td>
-                      <td className="py-2 text-slate-600">{a.fechaAsignacion}</td>
-                      <td className="py-2 text-slate-600">{a.tipoPortaNombre}</td>
-                      <td className="py-2 text-slate-600">{a.empresaNombre}</td>
-                      <td className="py-2 text-slate-600">
-                        {a.numeroBandeja != null ? `${a.numeroBandeja} / ${a.slotBandeja}` : '—'}
-                      </td>
+                  {detalle.resumen.map((r, i) => (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="py-2 font-medium text-ink">{r.trimestre}</td>
+                      <td className="py-2 text-slate-600">{r.tipoPortaNombre}</td>
+                      <td className="py-2 text-right text-ink font-medium">{r.cantidad}</td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t border-slate-200">
+                    <td className="py-2 font-semibold text-ink" colSpan="2">Total</td>
+                    <td className="py-2 text-right font-semibold text-ink">
+                      {detalle.resumen.reduce((a, r) => a + r.cantidad, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}

@@ -52,6 +52,15 @@ public class AsignacionController {
         return ResponseEntity.ok(service.listarPorCliente(clienteId));
     }
 
+    // Detalle del cliente: total de dosímetros por trimestre y tipo de porta
+    // (en vez de listar todos los dosímetros).
+    @GetMapping("/cliente/{clienteId}/resumen-porta-trimestre")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    public ResponseEntity<List<com.dosimetros.backend.dto.cliente.ResumenPortaTrimestreResponse>>
+            resumenPortaTrimestreCliente(@PathVariable Integer clienteId) {
+        return ResponseEntity.ok(service.resumenPortaTrimestrePorCliente(clienteId));
+    }
+
     // Trimestres (distintos) de un cliente, para poblar los chips de filtro sin
     // traer todas las asignaciones (carga perezosa por trimestre).
     @GetMapping("/cliente/{clienteId}/trimestres")
