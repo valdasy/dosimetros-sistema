@@ -32,9 +32,9 @@ import java.util.Set;
  *   A(0) = numero_dosimetro -> dosimetro.numero        (numerico, obligatorio)
  *   B(1) = tipo_dosimetro   -> tipoDosimetro.nombre    (texto: TLD, OSL, Cristal; obligatorio)
  *   C(2) = tipo_porta       -> tipoPorta.nombre        (texto, opcional)
- *   D(3) = numero_tarea     -> tarea.numeroTarea       (texto, opcional; vacío para OSL)
- *   E(4) = numero_bandeja   -> dosimetro.numeroBandeja (numerico, opcional; vacío para OSL)
- *   F(5) = slot_bandeja     -> dosimetro.slotBandeja   (numerico, opcional; vacío para OSL)
+ *   D(3) = numero_tarea     -> tarea.numeroTarea       (texto, opcional; aplica a todas las tecnologías)
+ *   E(4) = numero_bandeja   -> dosimetro.numeroBandeja (numerico, opcional)
+ *   F(5) = slot_bandeja     -> dosimetro.slotBandeja   (numerico, opcional)
  */
 @Service
 public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroService {
@@ -428,8 +428,6 @@ public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroServ
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Tipo de dosímetro no encontrado: '" + tipoDosimNombre + "'"));
 
-        boolean esOSL = "OSL".equalsIgnoreCase(tipoDosimetro.getNombre());
-
         TipoPorta tipoPorta = null;
         String tipoPortaNombre = formatter.formatCellValue(row.getCell(COL_TIPO_PORTA)).trim();
         if (!tipoPortaNombre.isBlank()) {
@@ -439,30 +437,31 @@ public class ImportacionDosimetroServiceImpl implements ImportacionDosimetroServ
                             "Tipo de porta '" + tipoPortaNombre + "' no compatible con '" + tipoDosimNombre + "'"));
         }
 
+        // Tarea, bandeja y slot se leen para TODAS las tecnologías (incluido OSL):
+        // si la celda viene con valor se usa, si viene vacía queda null.
         Tarea tarea = null;
         Integer numeroBandeja = null;
         Integer slotBandeja = null;
-        if (!esOSL) {
-            String numRepo = formatter.formatCellValue(row.getCell(COL_NUM_REPOSITORIO)).trim();
-            if (!numRepo.isBlank()) {
-                tarea = tareaRepository.findByNumeroTarea(numRepo)
-                        .orElseGet(() -> {
-                            Tarea nueva = new Tarea();
-                            nueva.setNumeroTarea(numRepo);
-                            nueva.setFechaCreacion(LocalDate.now());
-                            return tareaRepository.save(nueva);
-                        });
-            }
 
-            String bandStr = formatter.formatCellValue(row.getCell(COL_NUM_BANDEJA)).trim();
-            if (!bandStr.isBlank()) {
-                numeroBandeja = (int) Double.parseDouble(bandStr);
-            }
+        String numRepo = formatter.formatCellValue(row.getCell(COL_NUM_REPOSITORIO)).trim();
+        if (!numRepo.isBlank()) {
+            tarea = tareaRepository.findByNumeroTarea(numRepo)
+                    .orElseGet(() -> {
+                        Tarea nueva = new Tarea();
+                        nueva.setNumeroTarea(numRepo);
+                        nueva.setFechaCreacion(LocalDate.now());
+                        return tareaRepository.save(nueva);
+                    });
+        }
 
-            String slotStr = formatter.formatCellValue(row.getCell(COL_SLOT_BANDEJA)).trim();
-            if (!slotStr.isBlank()) {
-                slotBandeja = (int) Double.parseDouble(slotStr);
-            }
+        String bandStr = formatter.formatCellValue(row.getCell(COL_NUM_BANDEJA)).trim();
+        if (!bandStr.isBlank()) {
+            numeroBandeja = (int) Double.parseDouble(bandStr);
+        }
+
+        String slotStr = formatter.formatCellValue(row.getCell(COL_SLOT_BANDEJA)).trim();
+        if (!slotStr.isBlank()) {
+            slotBandeja = (int) Double.parseDouble(slotStr);
         }
 
         return new FilaParseada(numeroDosimetro, tipoDosimetro, tipoPorta, tarea, numeroBandeja, slotBandeja);
