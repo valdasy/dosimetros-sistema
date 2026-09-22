@@ -201,4 +201,41 @@ class DosimetroServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.eliminarTareas(List.of(7)));
         verify(tareaRepository, never()).deleteById(any());
     }
+
+    @Test
+    void liberarBorraLaAsignacionVigenteYDejaDisponible() {
+        Dosimetro d = dosimetro("asignado");
+        com.dosimetros.backend.entity.Asignacion vigente = new com.dosimetros.backend.entity.Asignacion();
+        vigente.setId(99);
+        when(dosimetroRepository.findById(1)).thenReturn(Optional.of(d));
+        when(asignacionRepository.findTopByDosimetroIdOrderByIdDesc(1)).thenReturn(Optional.of(vigente));
+        when(dosimetroRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.liberar(1);
+
+        verify(asignacionRepository).delete(vigente); // se borra la asignación vigente
+        assertEquals("disponible", d.getEstado());
+    }
+
+    @Test
+    void liberarNoBorraAsignacionSiNoEstabaAsignado() {
+        Dosimetro d = dosimetro("disponible");
+        when(dosimetroRepository.findById(1)).thenReturn(Optional.of(d));
+        when(dosimetroRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.liberar(1);
+
+        verify(asignacionRepository, never()).delete(any());
+        assertEquals("disponible", d.getEstado());
+    }
+
+    @Test
+    void noSePuedeLiberarUnDadoDeBaja() {
+        Dosimetro d = dosimetro("baja");
+        when(dosimetroRepository.findById(1)).thenReturn(Optional.of(d));
+
+        assertThrows(IllegalArgumentException.class, () -> service.liberar(1));
+        verify(asignacionRepository, never()).delete(any());
+        verify(dosimetroRepository, never()).save(any());
+    }
 }

@@ -125,7 +125,7 @@ function Edicion({ tiposDosimetro, portas, clientes, ejecutivos, empresas, toast
   }
   const onDanado = accion(marcarDanado, 'Dosímetro marcado como dañado')
   const onBueno = accion(marcarBueno, 'Dosímetro marcado como bueno')
-  const onLiberar = accion(liberarDosimetro, 'Dosímetro liberado')
+  const onLiberar = accion(liberarDosimetro, 'Dosímetro liberado (se quitó su asignación vigente)')
   const onBaja = (id) => {
     const obs = window.prompt('Motivo de la baja (opcional):', '') ?? ''
     accion(darDeBaja, 'Dosímetro dado de baja')(id, obs)

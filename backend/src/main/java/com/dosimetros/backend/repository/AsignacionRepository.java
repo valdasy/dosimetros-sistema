@@ -9,10 +9,15 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface AsignacionRepository extends JpaRepository<Asignacion, Integer> {
 
     List<Asignacion> findByDosimetroIdOrderByFechaAsignacionDesc(Integer dosimetroId);
+
+    // Asignación vigente de un dosímetro = la última creada (mayor id). Se usa al
+    // liberar un dosímetro para borrar solo esa asignación (la activa).
+    Optional<Asignacion> findTopByDosimetroIdOrderByIdDesc(Integer dosimetroId);
 
     // Cuántas asignaciones usan un tipo de porta (para proteger su eliminación).
     long countByTipoPortaId(Integer tipoPortaId);

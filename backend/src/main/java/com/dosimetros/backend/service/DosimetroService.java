@@ -260,6 +260,13 @@ public class DosimetroService {
         if ("baja".equalsIgnoreCase(dosimetro.getEstado())) {
             throw new IllegalArgumentException("No se puede liberar un dosímetro dado de baja");
         }
+        // Si el dosímetro está asignado, borra su asignación VIGENTE (la última) para
+        // que no quede en el historial ni en "Asignaciones por cliente" / "Pendiente
+        // de asignación". El historial de trimestres anteriores se conserva.
+        if ("asignado".equalsIgnoreCase(dosimetro.getEstado())) {
+            asignacionRepository.findTopByDosimetroIdOrderByIdDesc(id)
+                    .ifPresent(asignacionRepository::delete);
+        }
         dosimetro.setEstado("disponible");
         dosimetroRepository.save(dosimetro);
     }
