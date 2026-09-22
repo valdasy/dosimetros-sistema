@@ -79,6 +79,12 @@ export const getTareasEliminables = (q) =>
   client.get('/dosimetros/tareas/eliminables', { params: { q } }).then((r) => r.data)
 export const eliminarTareas = (tareaIds) =>
   client.post('/dosimetros/tareas/eliminar', tareaIds).then((r) => r.data)
+// Sacar por rango: quitar de una tarea los dosímetros disponibles de un rango de
+// bandeja/slot (extravío/daño), dejándolos como stock en "limbo" (sin tarea).
+export const previewSacarRango = (payload) =>
+  client.post('/dosimetros/tareas/sacar-rango/preview', payload).then((r) => r.data)
+export const sacarDelRango = (payload) =>
+  client.post('/dosimetros/tareas/sacar-rango', payload).then((r) => r.data)
 export const marcarDanado = (id) =>
   client.patch(`/dosimetros/${id}/danado`).then((r) => r.data)
 export const marcarBueno = (id) =>

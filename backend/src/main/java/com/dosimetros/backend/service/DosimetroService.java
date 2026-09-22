@@ -10,6 +10,9 @@ import com.dosimetros.backend.dto.dosimetro.DuplicadoResponse;
 import com.dosimetros.backend.dto.dosimetro.EditarEspecificacionesRequest;
 import com.dosimetros.backend.dto.dosimetro.MatrizCeldaResponse;
 import com.dosimetros.backend.dto.dosimetro.PortaDisponibleResponse;
+import com.dosimetros.backend.dto.dosimetro.SacarRangoPreviewResponse;
+import com.dosimetros.backend.dto.dosimetro.SacarRangoRequest;
+import com.dosimetros.backend.dto.dosimetro.SacarRangoResponse;
 import com.dosimetros.backend.dto.dosimetro.TareaArmadoResponse;
 import com.dosimetros.backend.dto.tarea.EliminarTareasResponse;
 import com.dosimetros.backend.dto.tarea.TareaDisponibleResponse;
@@ -427,6 +430,82 @@ public class DosimetroService {
             tareas++;
         }
         return new EliminarTareasResponse(tareas, dosimetros);
+    }
+
+    /**
+     * Vista previa de "sacar por rango": lista los dosímetros de la tarea que caen
+     * en el rango de bandeja/slot, marcando cuáles se pueden sacar (están
+     * disponibles) y cuáles se omitirán (asignados / extraviados / dañados / baja).
+     */
+    public SacarRangoPreviewResponse previewSacarRango(SacarRangoRequest request) {
+        List<Dosimetro> dosimetros = dosimetrosEnRango(request);
+        List<SacarRangoPreviewResponse.Item> items = new ArrayList<>();
+        int sacables = 0;
+        int omitidos = 0;
+        for (Dosimetro d : dosimetros) {
+            boolean sacable = "disponible".equalsIgnoreCase(d.getEstado());
+            if (sacable) sacables++; else omitidos++;
+            items.add(new SacarRangoPreviewResponse.Item(
+                    d.getId(),
+                    d.getNumero(),
+                    d.getTipoDosimetro() != null ? d.getTipoDosimetro().getNombre() : null,
+                    d.getNumeroBandeja(),
+                    d.getSlotBandeja(),
+                    d.getEstado(),
+                    sacable));
+        }
+        return new SacarRangoPreviewResponse(dosimetros.size(), sacables, omitidos, items);
+    }
+
+    /**
+     * "Sacar por rango": quita de la tarea los dosímetros DISPONIBLES que caen en
+     * el rango de bandeja/slot indicado (caso de uso: extravío o daño físico, para
+     * no "ensuciar" la tarea). Los dosímetros NO se eliminan ni pierden su
+     * historial: quedan disponibles pero sin tarea/bandeja/slot ("limbo"), por lo
+     * que dejan de aparecer en Asignar y en Stock hasta que reaparezcan vía
+     * "Actualizar stock". Los que no están disponibles se omiten sin tocarlos.
+     */
+    @Transactional
+    public SacarRangoResponse sacarDelRango(SacarRangoRequest request) {
+        List<Dosimetro> dosimetros = dosimetrosEnRango(request);
+        Map<Integer, TipoPorta> sinArmarPorTipo = new java.util.HashMap<>();
+        List<Dosimetro> aSacar = new ArrayList<>();
+        int omitidos = 0;
+        for (Dosimetro d : dosimetros) {
+            if (!"disponible".equalsIgnoreCase(d.getEstado())) {
+                omitidos++;
+                continue;
+            }
+            d.setTarea(null);
+            d.setNumeroBandeja(null);
+            d.setSlotBandeja(null);
+            d.setTipoPorta(portaSinArmar(d, sinArmarPorTipo));
+            aSacar.add(d);
+        }
+        if (!aSacar.isEmpty()) {
+            dosimetroRepository.saveAll(aSacar);
+        }
+        return new SacarRangoResponse(aSacar.size(), omitidos);
+    }
+
+    // Dosímetros de una tarea dentro de un rango de bandeja/slot (con validación).
+    private List<Dosimetro> dosimetrosEnRango(SacarRangoRequest request) {
+        if (request.getBandejaDesde() > request.getBandejaHasta()) {
+            throw new IllegalArgumentException("bandejaDesde no puede ser mayor que bandejaHasta");
+        }
+        if (request.getSlotDesde() != null && request.getSlotHasta() != null
+                && request.getSlotDesde() > request.getSlotHasta()) {
+            throw new IllegalArgumentException("slotDesde no puede ser mayor que slotHasta");
+        }
+        tareaRepository.findById(request.getTareaId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Tarea no encontrada con id: " + request.getTareaId()));
+        return dosimetroRepository.findByTareaYRangoBandejaSlot(
+                request.getTareaId(),
+                request.getBandejaDesde(),
+                request.getBandejaHasta(),
+                request.getSlotDesde(),
+                request.getSlotHasta());
     }
 
     // Devuelve la porta "Sin armar" de la tecnología del dosímetro (cacheada por

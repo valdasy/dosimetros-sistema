@@ -14,6 +14,7 @@ import {
 import { Card, Select, Badge, Button, Loading, EmptyState, Alert, Modal } from '../components/ui'
 import LiberacionMasiva from '../components/LiberacionMasiva'
 import EliminarTareas from '../components/EliminarTareas'
+import SacarPorRango from '../components/SacarPorRango'
 import { useToast } from '../components/Toast'
 
 const estadoColor = { disponible: 'green', asignado: 'blue', baja: 'red', dañado: 'amber', extraviado: 'slate' }
@@ -362,6 +363,9 @@ export default function Stock() {
 
       {/* Eliminar tareas subidas por error — solo Administrador */}
       <EliminarTareas />
+
+      {/* Sacar dosímetros por rango (extravío/daño) — solo Administrador */}
+      <SacarPorRango />
 
       {/* Filtros */}
       <Card title="Filtros">

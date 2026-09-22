@@ -11,6 +11,9 @@ import com.dosimetros.backend.dto.dosimetro.DuplicadoResponse;
 import com.dosimetros.backend.dto.dosimetro.EditarEspecificacionesRequest;
 import com.dosimetros.backend.dto.dosimetro.MatrizCeldaResponse;
 import com.dosimetros.backend.dto.dosimetro.PortaDisponibleResponse;
+import com.dosimetros.backend.dto.dosimetro.SacarRangoPreviewResponse;
+import com.dosimetros.backend.dto.dosimetro.SacarRangoRequest;
+import com.dosimetros.backend.dto.dosimetro.SacarRangoResponse;
 import com.dosimetros.backend.dto.dosimetro.TareaArmadoResponse;
 import com.dosimetros.backend.dto.tarea.EliminarTareasResponse;
 import com.dosimetros.backend.dto.tarea.TareaDisponibleResponse;
@@ -255,5 +258,23 @@ public class DosimetroController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EliminarTareasResponse> eliminarTareas(@RequestBody List<Integer> tareaIds) {
         return ResponseEntity.ok(service.eliminarTareas(tareaIds));
+    }
+
+    // Sacar por rango — vista previa: qué dosímetros del rango se pueden sacar.
+    @PostMapping("/tareas/sacar-rango/preview")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<SacarRangoPreviewResponse> previewSacarRango(
+            @Valid @RequestBody SacarRangoRequest request) {
+        return ResponseEntity.ok(service.previewSacarRango(request));
+    }
+
+    // Sacar por rango — saca de la tarea los dosímetros DISPONIBLES del rango,
+    // dejándolos como stock en "limbo" (disponibles sin tarea). No los elimina ni
+    // pierde su historial. Solo Administrador.
+    @PostMapping("/tareas/sacar-rango")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<SacarRangoResponse> sacarDelRango(
+            @Valid @RequestBody SacarRangoRequest request) {
+        return ResponseEntity.ok(service.sacarDelRango(request));
     }
 }

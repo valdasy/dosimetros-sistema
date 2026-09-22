@@ -203,6 +203,49 @@ class DosimetroServiceTest {
     }
 
     @Test
+    void sacarDelRangoSacaSoloLosDisponiblesYLosDejaEnLimbo() {
+        when(tareaRepository.findById(7)).thenReturn(Optional.of(tarea(7, "50")));
+        Dosimetro disp = dosimetro("disponible");
+        disp.setTarea(tarea(7, "50")); disp.setNumeroBandeja(2); disp.setSlotBandeja(5);
+        Dosimetro asig = dosimetro("asignado"); asig.setId(2);
+        asig.setTarea(tarea(7, "50")); asig.setNumeroBandeja(2); asig.setSlotBandeja(6);
+        when(dosimetroRepository.findByTareaYRangoBandejaSlot(7, 2, 2, null, null))
+                .thenReturn(List.of(disp, asig));
+        TipoPorta sinArmar = porta(99, 2);
+        when(tipoPortaRepository.findSinArmarByTipoDosimetro(2)).thenReturn(List.of(sinArmar));
+        when(dosimetroRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        com.dosimetros.backend.dto.dosimetro.SacarRangoRequest req =
+                new com.dosimetros.backend.dto.dosimetro.SacarRangoRequest();
+        req.setTareaId(7); req.setBandejaDesde(2); req.setBandejaHasta(2);
+
+        com.dosimetros.backend.dto.dosimetro.SacarRangoResponse resp = service.sacarDelRango(req);
+
+        assertEquals(1, resp.getSacados());
+        assertEquals(1, resp.getOmitidos());
+        // El disponible queda en limbo (sin tarea/bandeja/slot, porta "Sin armar").
+        assertEquals(null, disp.getTarea());
+        assertEquals(null, disp.getNumeroBandeja());
+        assertEquals(null, disp.getSlotBandeja());
+        assertEquals(99, disp.getTipoPorta().getId());
+        assertEquals("disponible", disp.getEstado());
+        // El asignado no se toca.
+        assertEquals(7, asig.getTarea().getId());
+        assertEquals("asignado", asig.getEstado());
+    }
+
+    @Test
+    void sacarDelRangoFallaSiBandejaDesdeMayorQueHasta() {
+        when(tareaRepository.findById(7)).thenReturn(Optional.of(tarea(7, "50")));
+        com.dosimetros.backend.dto.dosimetro.SacarRangoRequest req =
+                new com.dosimetros.backend.dto.dosimetro.SacarRangoRequest();
+        req.setTareaId(7); req.setBandejaDesde(5); req.setBandejaHasta(2);
+
+        assertThrows(IllegalArgumentException.class, () -> service.sacarDelRango(req));
+        verify(dosimetroRepository, never()).saveAll(any());
+    }
+
+    @Test
     void liberarBorraLaAsignacionVigenteYDejaDisponible() {
         Dosimetro d = dosimetro("asignado");
         com.dosimetros.backend.entity.Asignacion vigente = new com.dosimetros.backend.entity.Asignacion();

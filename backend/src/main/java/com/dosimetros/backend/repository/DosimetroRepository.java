@@ -108,6 +108,7 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
           AND (:tipoPortaId IS NULL OR d.tipoPorta.id = :tipoPortaId)
           AND (:tareaId IS NULL OR d.tarea.id = :tareaId)
           AND (:estado IS NULL OR d.estado = :estado)
+          AND (d.tarea IS NOT NULL OR d.estado <> 'disponible')
         ORDER BY d.numero ASC
     """)
     List<Dosimetro> filtrar(
@@ -186,10 +187,13 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
     List<Object[]> contarPorTipoDosimetro();
 
     // Disponibles para asignar, desglosados por tipo de porta (estado de armado).
+    // Se excluye el "limbo" (disponible sin tarea): no se puede asignar algo que
+    // no está en una tarea/bandeja/slot conocido.
     @Query("""
         SELECT tp.id, tp.nombre, COUNT(d)
         FROM Dosimetro d JOIN d.tipoPorta tp
         WHERE d.estado = 'disponible'
+          AND d.tarea IS NOT NULL
         GROUP BY tp.id, tp.nombre
         ORDER BY COUNT(d) DESC
     """)
@@ -207,21 +211,26 @@ public interface DosimetroRepository extends JpaRepository<Dosimetro, Integer> {
     List<Object[]> tareasConDisponibles(@Param("tipoDosimetroId") Integer tipoDosimetroId);
 
     // Detalle de portas disponibles: porta + tipo de dosímetro + cantidad.
+    // Se excluye el "limbo" (disponible sin tarea): no está disponible para asignar.
     @Query("""
         SELECT tp.id, tp.nombre, td.nombre, COUNT(d)
         FROM Dosimetro d JOIN d.tipoPorta tp JOIN tp.tipoDosimetro td
         WHERE d.estado = 'disponible'
+          AND d.tarea IS NOT NULL
         GROUP BY tp.id, tp.nombre, td.nombre
         ORDER BY td.nombre ASC, COUNT(d) DESC
     """)
     List<Object[]> detallePortasDisponibles();
 
     // #5: TODAS las portas con su stock disponible, incluidas las que están en 0.
+    // Se excluye el "limbo" (disponible sin tarea) para que el stock cuadre con el
+    // listado de Stock, que también lo oculta.
     @Query("""
         SELECT tp.id, tp.nombre, td.nombre,
                COUNT(d.id)
         FROM TipoPorta tp JOIN tp.tipoDosimetro td
         LEFT JOIN Dosimetro d ON d.tipoPorta.id = tp.id AND d.estado = 'disponible'
+                             AND d.tarea IS NOT NULL
         GROUP BY tp.id, tp.nombre, td.nombre
         ORDER BY td.nombre ASC, tp.nombre ASC
     """)
